@@ -1,0 +1,11 @@
+*.swp
+
+/Library/
+/Temp/
+
+/Extra/*.obj
+/Extra/backup
+
+.DS_Store
+Thumbs.db
+Desktop.ini
