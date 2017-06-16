@@ -41,7 +41,7 @@
 
             fixed4 Frag(Attributes input) : SV_Target
             {
-                return tex2D(_AOTexture, input.uv);
+                return tex2D(_AOTexture, input.uv).r;
             }
 
             ENDCG

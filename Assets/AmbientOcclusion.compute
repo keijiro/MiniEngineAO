@@ -10,11 +10,12 @@ SamplerState samplerDepthTexture;
 RWTexture2D<float> AOTexture;
 
 CBUFFER_START(AmbientOcclusion)
-    float4 InvThicknessTable[3];
-    float4 SampleWeightTable[3];
-    float2 InvSliceDimension;
-    float  RejectFadeoff;
-    float  RcpAccentuation;
+    float InvThicknessTable[12];
+    float SampleWeightTable[12];
+    float InvSliceWidth;
+    float InvSliceHeight;
+    float RejectFadeoff;
+    float RcpAccentuation;
 CBUFFER_END
 
 #if WIDE_SAMPLING
@@ -90,9 +91,9 @@ void AmbientOcclusion(
 )
 {
 #if WIDE_SAMPLING
-    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 7) * InvSliceDimension;
+    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 7) * float2(InvSliceWidth, InvSliceHeight);
 #else
-    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 3) * InvSliceDimension;
+    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 3) * float2(InvSliceWidth, InvSliceHeight);
 #endif
 
     // Fetch four depths and store them in LDS
@@ -132,13 +133,13 @@ void AmbientOcclusion(
     ao += SampleWeightTable[2].z * TestSamples(thisIdx, 2, 4, invThisDepth, InvThicknessTable[2].z);
 #else // SAMPLE_CHECKER
     // 36 samples:  sample every-other cell in a checker board pattern
-    ao += SampleWeightTable[0].y * TestSamples(thisIdx, 2, 0, invThisDepth, InvThicknessTable[0].y);
-    ao += SampleWeightTable[0].w * TestSamples(thisIdx, 4, 0, invThisDepth, InvThicknessTable[0].w);
-    ao += SampleWeightTable[1].x * TestSamples(thisIdx, 1, 1, invThisDepth, InvThicknessTable[1].x);
-    ao += SampleWeightTable[2].x * TestSamples(thisIdx, 2, 2, invThisDepth, InvThicknessTable[2].x);
-    ao += SampleWeightTable[2].w * TestSamples(thisIdx, 3, 3, invThisDepth, InvThicknessTable[2].w);
-    ao += SampleWeightTable[1].z * TestSamples(thisIdx, 1, 3, invThisDepth, InvThicknessTable[1].z);
-    ao += SampleWeightTable[2].z * TestSamples(thisIdx, 2, 4, invThisDepth, InvThicknessTable[2].z);
+    ao += SampleWeightTable[ 1] * TestSamples(thisIdx, 2, 0, invThisDepth, InvThicknessTable[ 1]);
+    ao += SampleWeightTable[ 3] * TestSamples(thisIdx, 4, 0, invThisDepth, InvThicknessTable[ 3]);
+    ao += SampleWeightTable[ 4] * TestSamples(thisIdx, 1, 1, invThisDepth, InvThicknessTable[ 4]);
+    ao += SampleWeightTable[ 8] * TestSamples(thisIdx, 2, 2, invThisDepth, InvThicknessTable[ 8]);
+    ao += SampleWeightTable[11] * TestSamples(thisIdx, 3, 3, invThisDepth, InvThicknessTable[11]);
+    ao += SampleWeightTable[ 6] * TestSamples(thisIdx, 1, 3, invThisDepth, InvThicknessTable[ 6]);
+    ao += SampleWeightTable[10] * TestSamples(thisIdx, 2, 4, invThisDepth, InvThicknessTable[10]);
 #endif
 
 #ifdef INTERLEAVE_RESULT
