@@ -117,6 +117,12 @@ namespace ComputeAO
                 4.0f * SampleThickness[11]     // Diagonal
             };
 
+            SampleWeightTable[0] = 0;
+            SampleWeightTable[2] = 0;
+            SampleWeightTable[5] = 0;
+            SampleWeightTable[7] = 0;
+            SampleWeightTable[9] = 0;
+
             // Normalize the weights by dividing by the sum of all weights
             var totalWeight = 0.0f;
 
@@ -126,12 +132,12 @@ namespace ComputeAO
             for (var i = 0; i < SampleWeightTable.Length; i++)
                 SampleWeightTable[i] /= totalWeight;
 
-            _aoCommand.SetComputeFloatParams(_compute, "InvThicknessTable", InvThicknessTable);
-            _aoCommand.SetComputeFloatParams(_compute, "SampleWeightTable", SampleWeightTable);
-            _aoCommand.SetComputeFloatParam(_compute, "InvSliceWidth", 1 / width);
-            _aoCommand.SetComputeFloatParam(_compute, "InvSliceHeight", 1 / height);
-            _aoCommand.SetComputeFloatParam(_compute, "RejectFadeoff", 1 / -_rejectionFalloff);
-            _aoCommand.SetComputeFloatParam(_compute, "RcpAccentuation", 1 / (1 + _accentuation));
+            _aoCommand.SetComputeFloatParams(_compute, "gInvThicknessTable", InvThicknessTable);
+            _aoCommand.SetComputeFloatParams(_compute, "gSampleWeightTable", SampleWeightTable);
+            _aoCommand.SetComputeFloatParam(_compute, "gInvSliceWidth", 1 / width);
+            _aoCommand.SetComputeFloatParam(_compute, "gInvSliceHeight", 1 / height);
+            _aoCommand.SetComputeFloatParam(_compute, "gRejectFadeoff", 1 / -_rejectionFalloff);
+            _aoCommand.SetComputeFloatParam(_compute, "gRcpAccentuation", 1 / (1 + _accentuation));
 
             var near = GetComponent<Camera>().nearClipPlane;
             var far = GetComponent<Camera>().farClipPlane;
@@ -139,7 +145,7 @@ namespace ComputeAO
             var vy = far / near;
             vy += vx;
             vx = -vx;
-            _aoCommand.SetComputeVectorParam(_compute, "ZBufferParams", new Vector4(
+            _aoCommand.SetComputeVectorParam(_compute, "gZBufferParams", new Vector4(
             vx, vy, 0, 0
             ));
         }
@@ -166,14 +172,14 @@ namespace ComputeAO
             _aoCommand = new CommandBuffer();
             _aoCommand.name = "AO Estimator";
 
-            var kernel = _compute.FindKernel("AmbientOcclusion");
+            var kernel = _compute.FindKernel("Default");
 
             _aoCommand.SetComputeTextureParam(
-                _compute, kernel, "DepthTexture", BuiltinRenderTextureType.ResolvedDepth
+                _compute, kernel, "DepthTex", BuiltinRenderTextureType.ResolvedDepth
             );
 
             _aoCommand.SetComputeTextureParam(
-                _compute, kernel, "AOTexture", _aoBuffer
+                _compute, kernel, "Occlusion", _aoBuffer
             );
 
             UpdateComputeParameters(camera.pixelWidth, camera.pixelHeight, 1 / camera.projectionMatrix[0, 0]);
