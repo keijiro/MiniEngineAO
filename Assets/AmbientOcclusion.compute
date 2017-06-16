@@ -9,13 +9,14 @@ SamplerState samplerDepthTexture;
 
 RWTexture2D<float> AOTexture;
 
-CBUFFER_START(AmbientOcclusion)
+CBUFFER_START(AmbientOcclusionParameters)
     float InvThicknessTable[12];
     float SampleWeightTable[12];
     float InvSliceWidth;
     float InvSliceHeight;
     float RejectFadeoff;
     float RcpAccentuation;
+    float4 ZBufferParams;
 CBUFFER_END
 
 #if WIDE_SAMPLING
@@ -31,6 +32,11 @@ CBUFFER_END
 #endif
 
 groupshared float DepthSamples[TILE_DIM * TILE_DIM];
+
+float LinearDepth(float z)
+{
+    return 1.0 / (ZBufferParams.x * z + ZBufferParams.y);
+}
 
 float TestSamplePair(float frontDepth, float invRange, uint base, int offset)
 {
@@ -99,10 +105,10 @@ void AmbientOcclusion(
     // Fetch four depths and store them in LDS
     float4 depths = DepthTexture.Gather(samplerDepthTexture, QuadCenterUV);
     int destIdx = GTid.x * 2 + GTid.y * 2 * TILE_DIM;
-    DepthSamples[destIdx] = depths.w;
-    DepthSamples[destIdx + 1] = depths.z;
-    DepthSamples[destIdx + TILE_DIM] = depths.x;
-    DepthSamples[destIdx + TILE_DIM + 1] = depths.y;
+    DepthSamples[destIdx] = LinearDepth(depths.w);
+    DepthSamples[destIdx + 1] = LinearDepth(depths.z);
+    DepthSamples[destIdx + TILE_DIM] = LinearDepth(depths.x);
+    DepthSamples[destIdx + TILE_DIM + 1] = LinearDepth(depths.y);
 
     GroupMemoryBarrierWithGroupSync();
 

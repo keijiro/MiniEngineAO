@@ -209,6 +209,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b200ceda39a40af43bbb16a879f0791f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _rejectionFalloff: 2.5
+  _accentuation: 0.1
   _shader: {fileID: 4800000, guid: 532f9473ecfa16148a1ecdb3b72a44e8, type: 3}
   _compute: {fileID: 7200000, guid: e49d5d8e57b0515469bb1ef4bf07b8dd, type: 3}
 --- !u!1 &1238964561

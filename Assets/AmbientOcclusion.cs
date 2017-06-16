@@ -10,7 +10,6 @@ namespace ComputeAO
 
         [SerializeField, Range(1, 10)] float _rejectionFalloff = 2.5f;
         [SerializeField, Range(0, 1)] float _accentuation = 0.1f;
-        [SerializeField, Range(1, 4)] int _hierarchyDepth = 3;
 
         #endregion
 
@@ -41,10 +40,8 @@ namespace ComputeAO
                     DestroyImmediate(o);
         }
 
-        void UpdateComputeParameters(float width, float height, float fov)
+        void UpdateComputeParameters(float width, float height, float TanHalfFovH)
         {
-            var TanHalfFovH = Mathf.Tan(fov / 2);
-
             var SampleThickness = new [] {
                 Mathf.Sqrt(1.0f - 0.2f * 0.2f),
                 Mathf.Sqrt(1.0f - 0.4f * 0.4f),
@@ -80,7 +77,7 @@ namespace ComputeAO
             ThicknessMultiplier *= 2.0f;
 
             // This will transform a depth value from [0, thickness] to [0, 1].
-            float InverseRangeFactor = 1.0f / ThicknessMultiplier;
+            var InverseRangeFactor = 1.0f / ThicknessMultiplier;
 
             // The thicknesses are smaller for all off-center samples of the sphere.  Compute thicknesses relative
             // to the center sample.
@@ -135,6 +132,16 @@ namespace ComputeAO
             _aoCommand.SetComputeFloatParam(_compute, "InvSliceHeight", 1 / height);
             _aoCommand.SetComputeFloatParam(_compute, "RejectFadeoff", 1 / -_rejectionFalloff);
             _aoCommand.SetComputeFloatParam(_compute, "RcpAccentuation", 1 / (1 + _accentuation));
+
+            var near = GetComponent<Camera>().nearClipPlane;
+            var far = GetComponent<Camera>().farClipPlane;
+            var vx = 1 - far / near;
+            var vy = far / near;
+            vy += vx;
+            vx = -vx;
+            _aoCommand.SetComputeVectorParam(_compute, "ZBufferParams", new Vector4(
+            vx, vy, 0, 0
+            ));
         }
 
         #endregion
@@ -169,7 +176,7 @@ namespace ComputeAO
                 _compute, kernel, "AOTexture", _aoBuffer
             );
 
-            UpdateComputeParameters(camera.pixelWidth, camera.pixelHeight, camera.fieldOfView);
+            UpdateComputeParameters(camera.pixelWidth, camera.pixelHeight, 1 / camera.projectionMatrix[0, 0]);
 
             uint sizeX, sizeY, sizeZ;
             _compute.GetKernelThreadGroupSizes(kernel, out sizeX, out sizeY, out sizeZ);
