@@ -19,8 +19,8 @@
 // Author:  James Stanard
 //
 
-#pragma kernel Default MAIN=Default
-#pragma kernel Interleaved MAIN=Interleaved INTERLEAVE_RESULT
+#pragma kernel main MAIN=main
+#pragma kernel main_interleaved MAIN=main_interleaved INTERLEAVE_RESULT
 
 #include "HLSLSupport.cginc"
 
