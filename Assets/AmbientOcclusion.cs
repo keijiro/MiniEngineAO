@@ -34,6 +34,10 @@ namespace ComputeAO
         RenderTexture _tiledDepthBuffer2;
         RenderTexture _tiledDepthBuffer3;
         RenderTexture _tiledDepthBuffer4;
+        RenderTexture _temporaryAOBuffer1;
+        RenderTexture _temporaryAOBuffer2;
+        RenderTexture _temporaryAOBuffer3;
+        RenderTexture _temporaryAOBuffer4;
         CommandBuffer _aoCommand;
 
         Material _debugMaterial;
@@ -65,15 +69,22 @@ namespace ComputeAO
             // Requires the camera depth texture.
             camera.depthTextureMode |= DepthTextureMode.Depth;
 
-            // Initialize the AO buffer.
-            _aoBuffer = CreateUAVBuffer(camera.pixelWidth, camera.pixelHeight, 1, 8);
+            // Buffer allocation.
+            var width = camera.pixelWidth;
+            var height = camera.pixelHeight;
+            _aoBuffer = CreateUAVBuffer(width, height, 1, 8);
+            AllocateTemporaryBuffers(width, height);
 
             // Set up the AO command buffer.
             // It's to be invoked before deferred lighting.
             _aoCommand = new CommandBuffer();
             _aoCommand.name = "SSAO";
             AddDepthSetUpCommands(_aoCommand, camera);
-            AddAOCommands(_aoCommand, camera);
+            var tanHalfFovH = 1 / camera.projectionMatrix[0, 0];
+            AddAOCommands(_aoCommand, _tiledDepthBuffer4, _temporaryAOBuffer4, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer3, _temporaryAOBuffer3, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer2, _temporaryAOBuffer2, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer1, _temporaryAOBuffer1, tanHalfFovH);
             camera.AddCommandBuffer(CameraEvent.BeforeLighting, _aoCommand);
 
             // Set up the debug command buffer.
@@ -117,15 +128,6 @@ namespace ComputeAO
 
         #region Command buffer builders
 
-        internal static class TextureID
-        {
-            static public readonly int linearDepth = Shader.PropertyToID("LinearZ");
-            static public readonly int downsizedDepth1 = Shader.PropertyToID("DS2x");
-            static public readonly int downsizedDepth2 = Shader.PropertyToID("DS4x");
-            static public readonly int tiledDepth1 = Shader.PropertyToID("DS2xAtlas");
-            static public readonly int tiledDepth2 = Shader.PropertyToID("DS4xAtlas");
-        }
-
         RenderTexture CreateUAVBuffer(int width, int height, int depth, int bpp)
         {
             var format = RenderTextureFormat.R8;
@@ -159,22 +161,35 @@ namespace ComputeAO
                 return new Vector4(1 - fpn, fpn, 0, 0);
         }
 
+        void AllocateTemporaryBuffers(int width, int height)
+        {
+            var w1 = (width +  1) /  2; var h1 = (height +  1) /  2;
+            var w2 = (width +  3) /  4; var h2 = (height +  3) /  4;
+            var w3 = (width +  7) /  8; var h3 = (height +  7) /  8;
+            var w4 = (width + 15) / 16; var h4 = (height + 15) / 16;
+            var w5 = (width + 31) / 32; var h5 = (height + 31) / 32;
+            var w6 = (width + 63) / 64; var h6 = (height + 63) / 64;
+
+            _linearDepthBuffer = CreateUAVBuffer(width, height, 1, 16);
+
+            _downsizedDepthBuffer1 = CreateUAVBuffer(w1, h1, 1, 32);
+            _downsizedDepthBuffer2 = CreateUAVBuffer(w2, h2, 1, 32);
+            _downsizedDepthBuffer3 = CreateUAVBuffer(w3, h3, 1, 32);
+            _downsizedDepthBuffer4 = CreateUAVBuffer(w4, h4, 1, 32);
+
+            _tiledDepthBuffer1 = CreateUAVBuffer(w3, h3, 16, 16);
+            _tiledDepthBuffer2 = CreateUAVBuffer(w4, h4, 16, 16);
+            _tiledDepthBuffer3 = CreateUAVBuffer(w5, h5, 16, 16);
+            _tiledDepthBuffer4 = CreateUAVBuffer(w6, h6, 16, 16);
+
+            _temporaryAOBuffer1 = CreateUAVBuffer(w1, h1, 1, 8);
+            _temporaryAOBuffer2 = CreateUAVBuffer(w2, h2, 1, 8);
+            _temporaryAOBuffer3 = CreateUAVBuffer(w3, h3, 1, 8);
+            _temporaryAOBuffer4 = CreateUAVBuffer(w4, h4, 1, 8);
+        }
+
         void AddDepthSetUpCommands(CommandBuffer cmd, Camera camera)
         {
-            var w = camera.pixelWidth;
-            var h = camera.pixelHeight;
-
-            // Allocate temporary depth buffers.
-            _linearDepthBuffer = CreateUAVBuffer(w, h, 1, 16);
-            _downsizedDepthBuffer1 = CreateUAVBuffer((w +  1) /  2, (h +  1) /  2, 1, 32);
-            _downsizedDepthBuffer2 = CreateUAVBuffer((w +  3) /  4, (h +  3) /  4, 1, 32);
-            _downsizedDepthBuffer3 = CreateUAVBuffer((w +  7) /  8, (h +  7) /  8, 1, 32);
-            _downsizedDepthBuffer4 = CreateUAVBuffer((w + 15) / 16, (h + 15) / 16, 1, 32);
-            _tiledDepthBuffer1 = CreateUAVBuffer((w +  7) /  8, (h +  7) /  8, 16, 32);
-            _tiledDepthBuffer2 = CreateUAVBuffer((w + 15) / 16, (h + 15) / 16, 16, 32);
-            _tiledDepthBuffer3 = CreateUAVBuffer((w + 31) / 32, (h + 31) / 32, 16, 32);
-            _tiledDepthBuffer4 = CreateUAVBuffer((w + 63) / 64, (h + 63) / 64, 16, 32);
-
             // 1st downsampling pass.
             var kernel = _setup1Compute.FindKernel("main");
             _aoCommand.SetComputeTextureParam(_setup1Compute, kernel, "LinearZ", _linearDepthBuffer);
@@ -196,62 +211,7 @@ namespace ComputeAO
             _aoCommand.DispatchCompute(_setup2Compute, kernel, _tiledDepthBuffer4.width, _tiledDepthBuffer4.height, 1);
         }
 
-        void AddAOCommands(CommandBuffer cmd, Camera camera)
-        {
-        }
-
-        void AddDebugCommands(CommandBuffer cmd)
-        {
-            //_debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            //_debugCommand.SetGlobalTexture("_AOTexture", _downsizedDepthBuffer4);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            _debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer4);
-            _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
-        }
-
-        #endregion
-
-#if lsjdldfjksla
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            // Execute it before image effects.
-
-        #region Private functions
-            uint sizeX, sizeY, sizeZ;
-            _compute.GetKernelThreadGroupSizes(kernel, out sizeX, out sizeY, out sizeZ);
-
-            _aoCommand.DispatchCompute(
-                _compute, kernel,
-                camera.pixelWidth / (int)sizeX,
-                camera.pixelHeight / (int)sizeY,
-                1
-            );
-            var kernel = _compute.FindKernel("main");
-
-            _aoCommand.SetComputeTextureParam(
-                _compute, kernel, "DepthTex", BuiltinRenderTextureType.ResolvedDepth
-            );
-
-            _aoCommand.SetComputeTextureParam(
-                _compute, kernel, "Occlusion", _aoBuffer
-            );
-
-            UpdateComputeParameters(camera.pixelWidth, camera.pixelHeight, 1 / camera.projectionMatrix[0, 0]);
-
-        void UpdateComputeParameters(float width, float height, float TanHalfFovH)
+        void AddAOCommands(CommandBuffer cmd, RenderTexture depthBuffer, RenderTexture outBuffer, float TanHalfFovH)
         {
             var SampleThickness = new [] {
                 Mathf.Sqrt(1.0f - 0.2f * 0.2f),
@@ -284,7 +244,7 @@ namespace ComputeAO
             // ScreenspaceDiameter:  Diameter of sample sphere in pixel units
             // ScreenspaceDiameter / BufferWidth:  Ratio of the screen width that the sphere actually covers
             // Note about the "2.0f * ":  Diameter = 2 * Radius
-            var ThicknessMultiplier = 2.0f * TanHalfFovH * ScreenspaceDiameter / width;
+            var ThicknessMultiplier = 2.0f * TanHalfFovH * ScreenspaceDiameter / depthBuffer.width;
             ThicknessMultiplier *= 2.0f;
 
             // This will transform a depth value from [0, thickness] to [0, 1].
@@ -343,17 +303,39 @@ namespace ComputeAO
             for (var i = 0; i < SampleWeightTable.Length; i++)
                 SampleWeightTable[i] /= totalWeight;
 
-            _aoCommand.SetComputeFloatParams(_compute, "gInvThicknessTable", InvThicknessTable);
-            _aoCommand.SetComputeFloatParams(_compute, "gSampleWeightTable", SampleWeightTable);
-            _aoCommand.SetComputeFloatParam(_compute, "gInvSliceWidth", 1 / width);
-            _aoCommand.SetComputeFloatParam(_compute, "gInvSliceHeight", 1 / height);
-            _aoCommand.SetComputeFloatParam(_compute, "gRejectFadeoff", 1 / -_rejectionFalloff);
-            _aoCommand.SetComputeFloatParam(_compute, "gRcpAccentuation", 1 / (1 + _accentuation));
+            _aoCommand.SetComputeFloatParams(_aoCompute, "gInvThicknessTable", InvThicknessTable);
+            _aoCommand.SetComputeFloatParams(_aoCompute, "gSampleWeightTable", SampleWeightTable);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceWidth", 1 / depthBuffer.width);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceHeight", 1 / depthBuffer.height);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gRejectFadeoff", 1 / -_rejectionFalloff);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gRcpAccentuation", 1 / (1 + _accentuation));
 
+            var kernel = _aoCompute.FindKernel("main_interleaved");
+
+            _aoCommand.SetComputeTextureParam(_aoCompute, kernel, "DepthTex", depthBuffer);
+            _aoCommand.SetComputeTextureParam(_aoCompute, kernel, "Occlusion", outBuffer);
+
+            uint sizeX, sizeY, sizeZ;
+            _aoCompute.GetKernelThreadGroupSizes(kernel, out sizeX, out sizeY, out sizeZ);
+
+            _aoCommand.DispatchCompute(
+                _aoCompute, kernel,
+                depthBuffer.width / (int)sizeX,
+                depthBuffer.height / (int)sizeY,
+                depthBuffer.volumeDepth / (int)sizeZ
+            );
         }
 
+        void AddDebugCommands(CommandBuffer cmd)
+        {
+            //_debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
+            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
+            _debugCommand.SetGlobalTexture("_AOTexture", _temporaryAOBuffer2);
+            _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
+            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer4);
+            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
+        }
 
         #endregion
-#endif
     }
 }
