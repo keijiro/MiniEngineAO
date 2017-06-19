@@ -36,13 +36,12 @@ Texture2D<float> DepthTex;
 RWTexture2D<float> Occlusion;
 SamplerState samplerDepthTex;
 CBUFFER_START(CB1)
-    float  gInvThicknessTable[12];
-    float  gSampleWeightTable[12];
-    float  gInvSliceWidth;
-    float  gInvSliceHeight;
-    float  gRejectFadeoff;
-    float  gRcpAccentuation;
-    float4 gZBufferParams;
+    float gInvThicknessTable[12];
+    float gSampleWeightTable[12];
+    float gInvSliceWidth;
+    float gInvSliceHeight;
+    float gRejectFadeoff;
+    float gRcpAccentuation;
 CBUFFER_END
 
 #if WIDE_SAMPLING
@@ -58,11 +57,6 @@ CBUFFER_END
 #endif
 
 groupshared float DepthSamples[TILE_DIM * TILE_DIM];
-
-float LinearDepth(float z)
-{
-    return 1.0 / (gZBufferParams.x * z + gZBufferParams.y);
-}
 
 float TestSamplePair( float frontDepth, float invRange, uint base, int offset )
 {
@@ -132,10 +126,10 @@ void MAIN( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
     float4 depths = DepthTex.Gather(samplerDepthTex, QuadCenterUV);
 #endif
     int destIdx = GTid.x * 2 + GTid.y * 2 * TILE_DIM;
-    DepthSamples[destIdx] = LinearDepth(depths.w);
-    DepthSamples[destIdx + 1] = LinearDepth(depths.z);
-    DepthSamples[destIdx + TILE_DIM] = LinearDepth(depths.x);
-    DepthSamples[destIdx + TILE_DIM + 1] = LinearDepth(depths.y);
+    DepthSamples[destIdx] = depths.w;
+    DepthSamples[destIdx + 1] = depths.z;
+    DepthSamples[destIdx + TILE_DIM] = depths.x;
+    DepthSamples[destIdx + TILE_DIM + 1] = depths.y;
 
     GroupMemoryBarrierWithGroupSync();
 

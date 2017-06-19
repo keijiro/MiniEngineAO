@@ -81,10 +81,10 @@ namespace ComputeAO
             _aoCommand.name = "SSAO";
             AddDepthSetUpCommands(_aoCommand, camera);
             var tanHalfFovH = 1 / camera.projectionMatrix[0, 0];
-            AddAOCommands(_aoCommand, _tiledDepthBuffer4, _temporaryAOBuffer4, tanHalfFovH);
-            AddAOCommands(_aoCommand, _tiledDepthBuffer3, _temporaryAOBuffer3, tanHalfFovH);
-            AddAOCommands(_aoCommand, _tiledDepthBuffer2, _temporaryAOBuffer2, tanHalfFovH);
             AddAOCommands(_aoCommand, _tiledDepthBuffer1, _temporaryAOBuffer1, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer2, _temporaryAOBuffer2, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer3, _temporaryAOBuffer3, tanHalfFovH);
+            AddAOCommands(_aoCommand, _tiledDepthBuffer4, _temporaryAOBuffer4, tanHalfFovH);
             camera.AddCommandBuffer(CameraEvent.BeforeLighting, _aoCommand);
 
             // Set up the debug command buffer.
@@ -245,7 +245,7 @@ namespace ComputeAO
             // ScreenspaceDiameter / BufferWidth:  Ratio of the screen width that the sphere actually covers
             // Note about the "2.0f * ":  Diameter = 2 * Radius
             var ThicknessMultiplier = 2.0f * TanHalfFovH * ScreenspaceDiameter / depthBuffer.width;
-            ThicknessMultiplier *= 2.0f;
+            if (depthBuffer.volumeDepth == 1) ThicknessMultiplier *= 2.0f;
 
             // This will transform a depth value from [0, thickness] to [0, 1].
             var InverseRangeFactor = 1.0f / ThicknessMultiplier;
@@ -305,8 +305,8 @@ namespace ComputeAO
 
             _aoCommand.SetComputeFloatParams(_aoCompute, "gInvThicknessTable", InvThicknessTable);
             _aoCommand.SetComputeFloatParams(_aoCompute, "gSampleWeightTable", SampleWeightTable);
-            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceWidth", 1 / depthBuffer.width);
-            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceHeight", 1 / depthBuffer.height);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceWidth", 1.0f / depthBuffer.width);
+            _aoCommand.SetComputeFloatParam(_aoCompute, "gInvSliceHeight", 1.0f / depthBuffer.height);
             _aoCommand.SetComputeFloatParam(_aoCompute, "gRejectFadeoff", 1 / -_rejectionFalloff);
             _aoCommand.SetComputeFloatParam(_aoCompute, "gRcpAccentuation", 1 / (1 + _accentuation));
 
@@ -330,9 +330,9 @@ namespace ComputeAO
         {
             //_debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            _debugCommand.SetGlobalTexture("_AOTexture", _temporaryAOBuffer2);
+            _debugCommand.SetGlobalTexture("_AOTexture", _temporaryAOBuffer1);
             _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer4);
+            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer2);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
         }
 
