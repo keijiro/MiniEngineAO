@@ -59,8 +59,6 @@
 
             UNITY_DECLARE_TEX2DARRAY(_TileTexture);
 
-            float _Depth;
-
             struct Attributes
             {
                 float4 vertex : POSITION;
@@ -83,7 +81,7 @@
 
             fixed4 Frag(Attributes input) : SV_Target
             {
-                float3 uvw = float3(input.uv, fmod(_Time.y * 4, 16));
+                float3 uvw = float3(input.uv, fmod(_Time.y * 8, 16));
                 return UNITY_SAMPLE_TEX2DARRAY(_TileTexture, uvw).r;
             }
 

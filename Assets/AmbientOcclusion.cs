@@ -95,7 +95,8 @@ namespace ComputeAO
             AddAOCommands(_aoCommand, _tiledDepthBuffer4, _temporaryAOBuffer4, tanHalfFovH);
             AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer4, _temporaryAOBuffer4, _downsizedDepthBuffer3, _temporaryAOBuffer3, _blurBuffer3);
             AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer3, _blurBuffer3,        _downsizedDepthBuffer2, _temporaryAOBuffer2, _blurBuffer2);
-            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer2, _blurBuffer2,        _downsizedDepthBuffer2, _temporaryAOBuffer2, _blurBuffer1);
+            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer2, _blurBuffer2,        _downsizedDepthBuffer1, _temporaryAOBuffer1, _blurBuffer1);
+            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer1, _blurBuffer1,        _linearDepthBuffer, null, _aoBuffer);
             camera.AddCommandBuffer(CameraEvent.BeforeLighting, _aoCommand);
 
             // Set up the debug command buffer.
@@ -335,9 +336,9 @@ namespace ComputeAO
 
             _aoCommand.DispatchCompute(
                 _aoCompute, kernel,
-                depthBuffer.width / (int)sizeX,
-                depthBuffer.height / (int)sizeY,
-                depthBuffer.volumeDepth / (int)sizeZ
+                (depthBuffer.width + (int)sizeX - 1) / (int)sizeX,
+                (depthBuffer.height + (int)sizeY - 1) / (int)sizeY,
+                (depthBuffer.volumeDepth + (int)sizeZ - 1) / (int)sizeZ
             );
         }
 
@@ -358,9 +359,8 @@ namespace ComputeAO
             var kernelName = (highResAO == null) ? "main" : "main_blendout";
             var kernel = _upsampleCompute.FindKernel(kernelName);
 
-            var blurTolerance = 1 - Mathf.Pow(10, _blurTolerance) * 1920.0f / lo_w;
+            var blurTolerance = 1 - Mathf.Pow(10, _blurTolerance) * 1920 / lo_w;
             blurTolerance *= blurTolerance;
-
             var upsampleTolerance = Mathf.Pow(10, _upsampleTolerance);
             var noiseFilterWeight = 1 / (Mathf.Pow(10, _noiseFilterTolerance) + upsampleTolerance);
 
@@ -377,24 +377,14 @@ namespace ComputeAO
             _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "HiResAO", highResAO);
             _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "AoResult", destination);
 
-            uint sizeX, sizeY, sizeZ;
-            _upsampleCompute.GetKernelThreadGroupSizes(kernel, out sizeX, out sizeY, out sizeZ);
-
-            _aoCommand.DispatchCompute(
-                _upsampleCompute, kernel,
-                (hi_w + 2) / (int)sizeX,
-                (hi_h + 2) / (int)sizeY,
-                1
-            );
+            _aoCommand.DispatchCompute(_upsampleCompute, kernel, (hi_w + 17) / 16, (hi_h + 17) / 16, 1);
         }
 
         void AddDebugCommands(CommandBuffer cmd)
         {
-            //_debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            _debugCommand.SetGlobalTexture("_AOTexture", _blurBuffer1);
+            _debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
             _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer2);
+            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer3);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
         }
 

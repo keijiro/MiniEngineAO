@@ -174,5 +174,5 @@ void MAIN( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
 #else
     uint2 OutPixel = DTid.xy;
 #endif
-    Occlusion[OutPixel] = ao * gRcpAccentuation;
+    Occlusion[OutPixel] = ao * gRcpAccentuation * 8;
 }
