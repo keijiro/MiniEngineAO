@@ -8,6 +8,10 @@ namespace ComputeAO
     {
         #region Exposed attributes
 
+        [SerializeField, Range(-8, 0)] float _noiseFilterTolerance = -3;
+        [SerializeField, Range(-8, -1)] float _blurTolerance = -5;
+        [SerializeField, Range(-12, -1)] float _upsampleTolerance = -7;
+        [Space]
         [SerializeField, Range(1, 10)] float _rejectionFalloff = 2.5f;
         [SerializeField, Range(0, 1)] float _accentuation = 0.1f;
 
@@ -18,6 +22,7 @@ namespace ComputeAO
         [SerializeField, HideInInspector] ComputeShader _setup1Compute;
         [SerializeField, HideInInspector] ComputeShader _setup2Compute;
         [SerializeField, HideInInspector] ComputeShader _aoCompute;
+        [SerializeField, HideInInspector] ComputeShader _upsampleCompute;
         [SerializeField, HideInInspector] Shader _debugShader;
 
         #endregion
@@ -38,6 +43,9 @@ namespace ComputeAO
         RenderTexture _temporaryAOBuffer2;
         RenderTexture _temporaryAOBuffer3;
         RenderTexture _temporaryAOBuffer4;
+        RenderTexture _blurBuffer1;
+        RenderTexture _blurBuffer2;
+        RenderTexture _blurBuffer3;
         CommandBuffer _aoCommand;
 
         Material _debugMaterial;
@@ -85,6 +93,9 @@ namespace ComputeAO
             AddAOCommands(_aoCommand, _tiledDepthBuffer2, _temporaryAOBuffer2, tanHalfFovH);
             AddAOCommands(_aoCommand, _tiledDepthBuffer3, _temporaryAOBuffer3, tanHalfFovH);
             AddAOCommands(_aoCommand, _tiledDepthBuffer4, _temporaryAOBuffer4, tanHalfFovH);
+            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer4, _temporaryAOBuffer4, _downsizedDepthBuffer3, _temporaryAOBuffer3, _blurBuffer3);
+            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer3, _blurBuffer3,        _downsizedDepthBuffer2, _temporaryAOBuffer2, _blurBuffer2);
+            AddUpsampleCommands(_aoCommand, _downsizedDepthBuffer2, _blurBuffer2,        _downsizedDepthBuffer2, _temporaryAOBuffer2, _blurBuffer1);
             camera.AddCommandBuffer(CameraEvent.BeforeLighting, _aoCommand);
 
             // Set up the debug command buffer.
@@ -186,6 +197,10 @@ namespace ComputeAO
             _temporaryAOBuffer2 = CreateUAVBuffer(w2, h2, 1, 8);
             _temporaryAOBuffer3 = CreateUAVBuffer(w3, h3, 1, 8);
             _temporaryAOBuffer4 = CreateUAVBuffer(w4, h4, 1, 8);
+
+            _blurBuffer1 = CreateUAVBuffer(w1, h1, 1, 8);
+            _blurBuffer2 = CreateUAVBuffer(w2, h2, 1, 8);
+            _blurBuffer3 = CreateUAVBuffer(w3, h3, 1, 8);
         }
 
         void AddDepthSetUpCommands(CommandBuffer cmd, Camera camera)
@@ -326,11 +341,58 @@ namespace ComputeAO
             );
         }
 
+        void AddUpsampleCommands(
+            CommandBuffer cmd,
+            RenderTexture lowResDepth,
+            RenderTexture interleavedAO,
+            RenderTexture highResDepth,
+            RenderTexture highResAO,
+            RenderTexture destination
+        )
+        {
+            var lo_w = lowResDepth.width;
+            var lo_h = lowResDepth.height;
+            var hi_w = highResDepth.width;
+            var hi_h = highResDepth.height;
+
+            var kernelName = (highResAO == null) ? "main" : "main_blendout";
+            var kernel = _upsampleCompute.FindKernel(kernelName);
+
+            var blurTolerance = 1 - Mathf.Pow(10, _blurTolerance) * 1920.0f / lo_w;
+            blurTolerance *= blurTolerance;
+
+            var upsampleTolerance = Mathf.Pow(10, _upsampleTolerance);
+            var noiseFilterWeight = 1 / (Mathf.Pow(10, _noiseFilterTolerance) + upsampleTolerance);
+
+            _aoCommand.SetComputeVectorParam(_upsampleCompute, "InvLowResolution", new Vector4(1.0f / lo_w, 1.0f / lo_h, 0, 0));
+            _aoCommand.SetComputeVectorParam(_upsampleCompute, "InvHighResolution", new Vector4(1.0f / hi_w, 1.0f / hi_h, 0, 0));
+            _aoCommand.SetComputeFloatParam(_upsampleCompute, "NoiseFilterStrength", noiseFilterWeight);
+            _aoCommand.SetComputeFloatParam(_upsampleCompute, "StepSize", 1920.0f / lo_w);
+            _aoCommand.SetComputeFloatParam(_upsampleCompute, "kBlurTolerance", blurTolerance);
+            _aoCommand.SetComputeFloatParam(_upsampleCompute, "kUpsampleTolerance", upsampleTolerance);
+
+            _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "LoResDB", lowResDepth);
+            _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "HiResDB", highResDepth);
+            _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "LoResAO1", interleavedAO);
+            _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "HiResAO", highResAO);
+            _aoCommand.SetComputeTextureParam(_upsampleCompute, kernel, "AoResult", destination);
+
+            uint sizeX, sizeY, sizeZ;
+            _upsampleCompute.GetKernelThreadGroupSizes(kernel, out sizeX, out sizeY, out sizeZ);
+
+            _aoCommand.DispatchCompute(
+                _upsampleCompute, kernel,
+                (hi_w + 2) / (int)sizeX,
+                (hi_h + 2) / (int)sizeY,
+                1
+            );
+        }
+
         void AddDebugCommands(CommandBuffer cmd)
         {
             //_debugCommand.SetGlobalTexture("_AOTexture", _aoBuffer);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
-            _debugCommand.SetGlobalTexture("_AOTexture", _temporaryAOBuffer1);
+            _debugCommand.SetGlobalTexture("_AOTexture", _blurBuffer1);
             _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
             //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer2);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
