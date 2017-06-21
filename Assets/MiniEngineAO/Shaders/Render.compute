@@ -36,12 +36,11 @@ Texture2D<float> DepthTex;
 RWTexture2D<float> Occlusion;
 SamplerState samplerDepthTex;
 CBUFFER_START(CB1)
-    float gInvThicknessTable[12];
-    float gSampleWeightTable[12];
-    float gInvSliceWidth;
-    float gInvSliceHeight;
-    float gRejectFadeoff;
-    float gRcpAccentuation;
+    float  gInvThicknessTable[12];
+    float  gSampleWeightTable[12];
+    float4 gInvSliceDimension;
+    float  gRejectFadeoff;
+    float  gRcpAccentuation;
 CBUFFER_END
 
 #if WIDE_SAMPLING
@@ -114,9 +113,9 @@ float TestSamples( uint centerIdx, uint x, uint y, float invDepth, float invThic
 void MAIN( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_GroupThreadID, uint3 DTid : SV_DispatchThreadID )
 {
 #if WIDE_SAMPLING
-    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 7) * float2(gInvSliceWidth, gInvSliceHeight);
+    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 7) * gInvSliceDimension.xy;
 #else
-    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 3) * float2(gInvSliceWidth, gInvSliceHeight);
+    float2 QuadCenterUV = int2(DTid.xy + GTid.xy - 3) * gInvSliceDimension.xy;
 #endif
 
     // Fetch four depths and store them in LDS
