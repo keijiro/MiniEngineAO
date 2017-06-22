@@ -1,4 +1,4 @@
-﻿Shader "Hidden/MiniEngineAO/Debug"
+Shader "Hidden/MiniEngineAO/Debug"
 {
     Properties
     {

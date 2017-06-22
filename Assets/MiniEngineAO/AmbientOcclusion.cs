@@ -1,4 +1,7 @@
-﻿using UnityEngine;
+// MiniEngine SSAO for Unity
+// https://github.com/keijiro/MiniEngineAO
+
+using UnityEngine;
 using UnityEngine.Rendering;
 
 namespace MiniEngineAO
