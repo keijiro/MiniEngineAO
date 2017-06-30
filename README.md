@@ -1,7 +1,7 @@
 MiniEngineAO
 ------------
 
-![screenshot](http://i.imgur.com/t5rHYXel.png)
+![screenshot](http://i.imgur.com/uOYU4YHl.png)
 
 **MiniEngineAO** is a SSAO shader for Unity that was originally developed by
 Team Minigraph at Microsoft for their [MiniEngine] library.
