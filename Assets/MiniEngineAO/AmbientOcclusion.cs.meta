@@ -1,6 +1,6 @@
 fileFormatVersion: 2
 guid: b200ceda39a40af43bbb16a879f0791f
-timeCreated: 1498029593
+timeCreated: 1499146983
 licenseType: Pro
 MonoImporter:
   serializedVersion: 2
@@ -11,7 +11,7 @@ MonoImporter:
       type: 3}
   - _renderCompute: {fileID: 7200000, guid: e49d5d8e57b0515469bb1ef4bf07b8dd, type: 3}
   - _upsampleCompute: {fileID: 7200000, guid: 2c3e5f47f9b262047ae010f239705186, type: 3}
-  - _debugShader: {fileID: 4800000, guid: 532f9473ecfa16148a1ecdb3b72a44e8, type: 3}
+  - _utilShader: {fileID: 4800000, guid: 532f9473ecfa16148a1ecdb3b72a44e8, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 
