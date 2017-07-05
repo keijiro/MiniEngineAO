@@ -40,7 +40,7 @@ Shader "Hidden/MiniEngineAO/Debug"
                 return o;
             }
 
-            fixed4 Frag(Attributes input) : SV_Target
+            fixed4 Frag(Varyings input) : SV_Target
             {
                 return tex2D(_AOTexture, input.uv).r;
             }
@@ -79,7 +79,7 @@ Shader "Hidden/MiniEngineAO/Debug"
                 return o;
             }
 
-            fixed4 Frag(Attributes input) : SV_Target
+            fixed4 Frag(Varyings input) : SV_Target
             {
                 float3 uvw = float3(input.uv, fmod(_Time.y * 8, 16));
                 return UNITY_SAMPLE_TEX2DARRAY(_TileTexture, uvw).r;
