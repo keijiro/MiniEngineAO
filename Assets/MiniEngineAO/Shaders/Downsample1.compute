@@ -63,14 +63,14 @@ void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
     uint2 st = DTid.xy;
     uint slice = (st.x & 3) | ((st.y & 3) << 2);
     DS2x[st] = w1;
-//    DS2xAtlas[uint3(st >> 2, slice)] = w1;
+    DS2xAtlas[uint3(st >> 2, slice)] = w1;
 
     if ((GI & 011) == 0)
     {
         st = DTid.xy >> 1;
         slice = (st.x & 3) | ((st.y & 3) << 2);
         DS4x[st] = w1;
-//        DS4xAtlas[uint3(st >> 2, slice)] = w1;
+        DS4xAtlas[uint3(st >> 2, slice)] = w1;
     }
 
 }

@@ -45,7 +45,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             sampler2D_float _CameraDepthTexture;
 
-            float4 Frag(Attributes input) : SV_Target
+            float4 Frag(Varyings input) : SV_Target
             {
                 return SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, input.uv);
             }
@@ -62,7 +62,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             sampler2D _AOTexture;
 
-            half4 Frag(Attributes input) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
                 return tex2D(_AOTexture, input.uv).r;
             }
@@ -79,7 +79,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             UNITY_DECLARE_TEX2DARRAY(_TileTexture);
 
-            half4 Frag(Attributes input) : SV_Target
+            half4 Frag(Varyings input) : SV_Target
             {
                 float3 uvw = float3(input.uv, fmod(_Time.y * 8, 16));
                 return UNITY_SAMPLE_TEX2DARRAY(_TileTexture, uvw).r;

@@ -159,6 +159,8 @@ namespace MiniEngineAO
 
         void Start()
         {
+            GetComponent<Camera>().depthTextureMode = DepthTextureMode.Depth;
+
             _renderCommand = new CommandBuffer();
             _renderCommand.name = "SSAO";
 
@@ -468,10 +470,8 @@ namespace MiniEngineAO
 
         void AddDebugCommands(CommandBuffer cmd)
         {
-            _debugCommand.SetGlobalTexture("_AOTexture", _linearDepthBuffer);
+            _debugCommand.SetGlobalTexture("_AOTexture", _resultBuffer);
             _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
-            //_debugCommand.SetGlobalTexture("_AOTexture", _resultBuffer);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
             //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer3);
             //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 2);
         }
