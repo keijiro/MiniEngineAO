@@ -59,7 +59,7 @@ namespace MiniEngineAO
         [SerializeField, HideInInspector] ComputeShader _downsample2Compute;
         [SerializeField, HideInInspector] ComputeShader _renderCompute;
         [SerializeField, HideInInspector] ComputeShader _upsampleCompute;
-        [SerializeField, HideInInspector] Shader _debugShader;
+        [SerializeField, HideInInspector] Shader _utilShader;
 
         #endregion
 
@@ -86,7 +86,7 @@ namespace MiniEngineAO
         CommandBuffer _renderCommand;
         CommandBuffer _debugCommand;
 
-        Material _debugMaterial;
+        Material _utilMaterial;
 
         #endregion
 
@@ -159,13 +159,15 @@ namespace MiniEngineAO
 
         void Start()
         {
+            GetComponent<Camera>().depthTextureMode = DepthTextureMode.Depth;
+
             _renderCommand = new CommandBuffer();
             _renderCommand.name = "SSAO";
 
             _debugCommand = new CommandBuffer();
             _debugCommand.name = "SSAO Debug";
 
-            _debugMaterial = new Material(_debugShader);
+            _utilMaterial = new Material(_utilShader);
 
             UpdateCommandBuffer();
         }
@@ -203,7 +205,7 @@ namespace MiniEngineAO
             _renderCommand.Dispose();
             _debugCommand.Dispose();
 
-            DestroyIfAlive(_debugMaterial);
+            DestroyIfAlive(_utilMaterial);
         }
 
         #endregion
@@ -316,6 +318,10 @@ namespace MiniEngineAO
 
         void AddDownsampleCommands(CommandBuffer cmd, Vector4 zBufferParams)
         {
+            var depthTex = Shader.PropertyToID("TempDepth");
+            _renderCommand.GetTemporaryRT(depthTex, _linearDepthBuffer.width, _linearDepthBuffer.height, 0, FilterMode.Point, RenderTextureFormat.RFloat);
+            _renderCommand.Blit(null, depthTex, _utilMaterial, 0);
+
             // 1st downsampling pass.
             var cs = _downsample1Compute;
             var kernel = cs.FindKernel("main");
@@ -324,9 +330,12 @@ namespace MiniEngineAO
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepthBuffer2);
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS2xAtlas", _tiledDepthBuffer1);
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS4xAtlas", _tiledDepthBuffer2);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
+            //_renderCommand.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
+            _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", depthTex);
             _renderCommand.SetComputeVectorParam(cs, "ZBufferParams", zBufferParams);
             _renderCommand.DispatchCompute(cs, kernel, _tiledDepthBuffer2.width, _tiledDepthBuffer2.height, 1);
+
+            _renderCommand.ReleaseTemporaryRT(depthTex);
 
             // 2nd downsampling pass.
             cs = _downsample2Compute;
@@ -462,9 +471,9 @@ namespace MiniEngineAO
         void AddDebugCommands(CommandBuffer cmd)
         {
             _debugCommand.SetGlobalTexture("_AOTexture", _resultBuffer);
-            _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 0);
+            _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
             //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer3);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _debugMaterial, 1);
+            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 2);
         }
 
         #endregion

@@ -36,7 +36,7 @@ void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
 
     uint2 st = DTid.xy;
     uint2 stAtlas = st >> 2;
-    uint stSlice = (st.x & 3) | ((st.y & 3) << 2);
+    uint stSlice = ((st.x & 3) | (st.y << 2)) & 15;
     DS8x[st] = m1;
     DS8xAtlas[uint3(stAtlas, stSlice)] = m1;
 
@@ -44,7 +44,7 @@ void main( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
     {
         uint2 st = DTid.xy >> 1;
         uint2 stAtlas = st >> 2;
-        uint stSlice = (st.x & 3) | ((st.y & 3) << 2);
+        uint stSlice = ((st.x & 3) | (st.y << 2)) & 15;
         DS16x[st] = m1;
         DS16xAtlas[uint3(stAtlas, stSlice)] = m1;
     }
