@@ -63,6 +63,15 @@ namespace MiniEngineAO
 
         #endregion
 
+        #region Hash IDs
+
+        internal static class ShaderIDs
+        {
+            public static readonly int DepthCopy = Shader.PropertyToID("DepthCopy");
+        }
+
+        #endregion
+
         #region Temporary objects
 
         RenderTexture _linearDepthBuffer;
@@ -97,6 +106,17 @@ namespace MiniEngineAO
             if (prop == value) return;
             _noiseFilterTolerance = value;
             UpdateCommandBuffer();
+        }
+
+        bool CheckIfResolvedDepthAvailable()
+        {
+            // AFAIK, resolved depth is only available on D3D11/12.
+            // TODO: Is there more proper way to determine this?
+            var rpath = GetComponent<Camera>().actualRenderingPath;
+            var gtype = SystemInfo.graphicsDeviceType;
+            return rpath == RenderingPath.DeferredShading &&
+                   (gtype == GraphicsDeviceType.Direct3D11 ||
+                    gtype == GraphicsDeviceType.Direct3D12);
         }
 
         static Vector4 InverseDimensionVector(RenderTexture rt)
@@ -316,11 +336,31 @@ namespace MiniEngineAO
             SetupUAVBuffer(ref _resultBuffer, width, height, 1, 8);
         }
 
+        void AddBufferAllocationCommand(CommandBuffer cmd, int id, int downscale, int bpp, bool uav)
+        {
+            var w = (_resultBuffer.width  + (downscale - 1)) / downscale;
+            var h = (_resultBuffer.height + (downscale - 1)) / downscale;
+
+            var format = RenderTextureFormat.R8;
+            if (bpp == 16) format = RenderTextureFormat.RHalf;
+            if (bpp == 32) format = RenderTextureFormat.RFloat;
+
+            cmd.GetTemporaryRT(
+                id, w, h, 0,
+                FilterMode.Point, format,
+                RenderTextureReadWrite.Linear, 1, uav
+            );
+        }
+
         void AddDownsampleCommands(CommandBuffer cmd, Vector4 zBufferParams)
         {
-            var depthTex = Shader.PropertyToID("TempDepth");
-            _renderCommand.GetTemporaryRT(depthTex, _linearDepthBuffer.width, _linearDepthBuffer.height, 0, FilterMode.Point, RenderTextureFormat.RFloat);
-            _renderCommand.Blit(null, depthTex, _utilMaterial, 0);
+            var copyDepth = !CheckIfResolvedDepthAvailable();
+
+            if (copyDepth)
+            {
+                AddBufferAllocationCommand(cmd, ShaderIDs.DepthCopy, 1, 32, false);
+                _renderCommand.Blit(null, ShaderIDs.DepthCopy, _utilMaterial, 0);
+            }
 
             // 1st downsampling pass.
             var cs = _downsample1Compute;
@@ -330,12 +370,14 @@ namespace MiniEngineAO
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepthBuffer2);
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS2xAtlas", _tiledDepthBuffer1);
             _renderCommand.SetComputeTextureParam(cs, kernel, "DS4xAtlas", _tiledDepthBuffer2);
-            //_renderCommand.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", depthTex);
+            if (copyDepth)
+                _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", ShaderIDs.DepthCopy);
+            else
+                _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
             _renderCommand.SetComputeVectorParam(cs, "ZBufferParams", zBufferParams);
             _renderCommand.DispatchCompute(cs, kernel, _tiledDepthBuffer2.width, _tiledDepthBuffer2.height, 1);
 
-            _renderCommand.ReleaseTemporaryRT(depthTex);
+            if (copyDepth) _renderCommand.ReleaseTemporaryRT(ShaderIDs.DepthCopy);
 
             // 2nd downsampling pass.
             cs = _downsample2Compute;
@@ -472,8 +514,6 @@ namespace MiniEngineAO
         {
             _debugCommand.SetGlobalTexture("_AOTexture", _resultBuffer);
             _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
-            //_debugCommand.SetGlobalTexture("_TileTexture", _tiledDepthBuffer3);
-            //_debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 2);
         }
 
         #endregion
