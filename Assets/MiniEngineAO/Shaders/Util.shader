@@ -22,11 +22,22 @@ Shader "Hidden/MiniEngineAO/Util"
         float2 uv : TEXCOORD0;
     };
 
-    Varyings Vert(Attributes input)
+    Varyings VertTraditionalBlit(Attributes input)
     {
         Varyings o;
         o.vertex = UnityObjectToClipPos(input.vertex);
         o.uv = input.uv;
+        return o;
+    }
+
+    Varyings VertProceduralBlit(uint vid : SV_VertexID)
+    {
+        float vx = vid == 1 ? 2 : 0;
+        float vy = vid == 2 ? -1 : 1;
+
+        Varyings o;
+        o.vertex = float4(vx * 2 - 1, 1 - vy * 2, 0, 1);
+        o.uv = float2(vx, vy);
         return o;
     }
 
@@ -38,9 +49,11 @@ Shader "Hidden/MiniEngineAO/Util"
 
         Pass
         {
+            Name "DepthCopy"
+
             CGPROGRAM
 
-            #pragma vertex Vert
+            #pragma vertex VertTraditionalBlit
             #pragma fragment Frag
 
             sampler2D_float _CameraDepthTexture;
@@ -55,34 +68,20 @@ Shader "Hidden/MiniEngineAO/Util"
 
         Pass
         {
+            Name "SimpleComposite"
+
+            Blend Zero SrcAlpha
+
             CGPROGRAM
 
-            #pragma vertex Vert
+            #pragma vertex VertProceduralBlit
             #pragma fragment Frag
 
             sampler2D _AOTexture;
 
-            half4 Frag(Varyings input) : SV_Target
+            float4 Frag(Varyings input) : SV_Target
             {
                 return tex2D(_AOTexture, input.uv).r;
-            }
-
-            ENDCG
-        }
-
-        Pass
-        {
-            CGPROGRAM
-
-            #pragma vertex Vert
-            #pragma fragment Frag
-
-            UNITY_DECLARE_TEX2DARRAY(_TileTexture);
-
-            half4 Frag(Varyings input) : SV_Target
-            {
-                float3 uvw = float3(input.uv, fmod(_Time.y * 8, 16));
-                return UNITY_SAMPLE_TEX2DARRAY(_TileTexture, uvw).r;
             }
 
             ENDCG

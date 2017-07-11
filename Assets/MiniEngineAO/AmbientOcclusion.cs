@@ -276,13 +276,13 @@ namespace MiniEngineAO
         RTHandle _occlusion2;
         RTHandle _occlusion3;
         RTHandle _occlusion4;
-        RTHandle _composite1;
-        RTHandle _composite2;
-        RTHandle _composite3;
+        RTHandle _combined1;
+        RTHandle _combined2;
+        RTHandle _combined3;
         RTHandle _result;
 
         CommandBuffer _renderCommand;
-        CommandBuffer _debugCommand;
+        CommandBuffer _compositeCommand;
 
         Material _utilMaterial;
 
@@ -332,7 +332,7 @@ namespace MiniEngineAO
             if (_renderCommand != null)
             {
                 _renderCommand.Dispose();
-                _debugCommand.Dispose();
+                _compositeCommand.Dispose();
             }
 
             if (_utilMaterial != null)
@@ -351,13 +351,13 @@ namespace MiniEngineAO
         void RegisterCommandBuffers()
         {
             _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
-            _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
+            _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
         }
 
         void UnregisterCommandBuffers()
         {
             _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
-            _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
         }
 
         void DoLazyInitialization()
@@ -391,9 +391,9 @@ namespace MiniEngineAO
                 _occlusion3 = new RTHandle("Occlusion3", TextureType.FixedUAV, MipLevel.L3);
                 _occlusion4 = new RTHandle("Occlusion4", TextureType.FixedUAV, MipLevel.L4);
 
-                _composite1 = new RTHandle("Composite1", TextureType.FixedUAV, MipLevel.L1);
-                _composite2 = new RTHandle("Composite2", TextureType.FixedUAV, MipLevel.L2);
-                _composite3 = new RTHandle("Composite3", TextureType.FixedUAV, MipLevel.L3);
+                _combined1 = new RTHandle("Combined1", TextureType.FixedUAV, MipLevel.L1);
+                _combined2 = new RTHandle("Combined2", TextureType.FixedUAV, MipLevel.L2);
+                _combined3 = new RTHandle("Combined3", TextureType.FixedUAV, MipLevel.L3);
 
                 _result = new RTHandle("AmbientOcclusion", TextureType.FixedUAV, MipLevel.Original);
             }
@@ -404,8 +404,8 @@ namespace MiniEngineAO
                 _renderCommand = new CommandBuffer();
                 _renderCommand.name = "SSAO";
 
-                _debugCommand = new CommandBuffer();
-                _debugCommand.name = "SSAO Debug";
+                _compositeCommand = new CommandBuffer();
+                _compositeCommand.name = "SSAO Composite";
             }
 
             // Materials
@@ -446,18 +446,18 @@ namespace MiniEngineAO
             PushRenderCommands(_renderCommand, _tiledDepth3, _occlusion3, tanHalfFovH);
             PushRenderCommands(_renderCommand, _tiledDepth4, _occlusion4, tanHalfFovH);
 
-            _composite1.PushAllocationCommand(_renderCommand);
-            _composite2.PushAllocationCommand(_renderCommand);
-            _composite3.PushAllocationCommand(_renderCommand);
+            _combined1.PushAllocationCommand(_renderCommand);
+            _combined2.PushAllocationCommand(_renderCommand);
+            _combined3.PushAllocationCommand(_renderCommand);
 
-            PushUpsampleCommands(_renderCommand, _lowDepth4, _occlusion4, _lowDepth3, _occlusion3, _composite3);
-            PushUpsampleCommands(_renderCommand, _lowDepth3, _composite3, _lowDepth2, _occlusion2, _composite2);
-            PushUpsampleCommands(_renderCommand, _lowDepth2, _composite2, _lowDepth1, _occlusion1, _composite1);
-            PushUpsampleCommands(_renderCommand, _lowDepth1, _composite1, _linearDepth, null, _result);
+            PushUpsampleCommands(_renderCommand, _lowDepth4, _occlusion4, _lowDepth3, _occlusion3, _combined3);
+            PushUpsampleCommands(_renderCommand, _lowDepth3, _combined3, _lowDepth2, _occlusion2, _combined2);
+            PushUpsampleCommands(_renderCommand, _lowDepth2, _combined2, _lowDepth1, _occlusion1, _combined1);
+            PushUpsampleCommands(_renderCommand, _lowDepth1, _combined1, _linearDepth, null, _result);
 
-            // Rebuild the debug commands.
-            _debugCommand.Clear();
-            PushDebugCommands(_debugCommand);
+            // Rebuild the composite commands.
+            _compositeCommand.Clear();
+            PushCompositeCommands(_compositeCommand);
 
             RegisterCommandBuffers();
         }
@@ -695,10 +695,10 @@ namespace MiniEngineAO
             cmd.DispatchCompute(cs, kernel, xcount, ycount, 1);
         }
 
-        void PushDebugCommands(CommandBuffer cmd)
+        void PushCompositeCommands(CommandBuffer cmd)
         {
             cmd.SetGlobalTexture("_AOTexture", _result.id);
-            cmd.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
+            cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 1, MeshTopology.Triangles, 3);
         }
 
         #endregion
