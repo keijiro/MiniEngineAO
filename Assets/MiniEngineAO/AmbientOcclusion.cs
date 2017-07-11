@@ -276,10 +276,14 @@ namespace MiniEngineAO
 
         #region MonoBehaviour functions
 
+        void Start()
+        {
+            _rebuildCommandBuffers = true;
+        }
+
         void OnEnable()
         {
             if (_renderCommand != null) RegisterCommandBuffers();
-            _rebuildCommandBuffers = true;
         }
 
         void OnDisable()
@@ -295,6 +299,10 @@ namespace MiniEngineAO
             // We have to rebuild the command buffer if it's changed.
             _rebuildCommandBuffers |=
                 !RTHandle.CheckBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+
+            // In edit mode, it's difficult to check all the elements that
+            // affect the AO, so we update the command buffer every time.
+            _rebuildCommandBuffers |= !Application.isPlaying;
 
             // Rebuild the command buffers if needed.
             if (_rebuildCommandBuffers)
