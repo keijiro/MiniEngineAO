@@ -11,6 +11,10 @@ namespace MiniEngineAO
     {
         #region Exposed attributes
 
+        // These attributes are simply exposed from the original MiniEngine
+        // AO shader. Some of them are not useful nor intuitive enough.
+        // TODO: Needs UI/UX rework.
+
         [SerializeField, Range(-8, 0)] float _noiseFilterTolerance = -3;
 
         public float noiseFilterTolerance
@@ -51,6 +55,24 @@ namespace MiniEngineAO
             set { UpdateProperty(ref _accentuation, value); }
         }
 
+        void UpdateProperty(ref float prop, float value)
+        {
+            if (prop == value) return;
+            prop = value;
+            RequestRebuildCommandBuffers();
+        }
+
+        #endregion
+
+        #region Public methods
+
+        // Force rebuilding the internal command buffers, mainly used from the
+        // Editor.
+        public void RequestRebuildCommandBuffers()
+        {
+            _rebuildCommandBuffers = true;
+        }
+
         #endregion
 
         #region Built-in resources
@@ -63,23 +85,25 @@ namespace MiniEngineAO
 
         #endregion
 
-        #region Internal classes
+        #region Render texture handle class
+
+        // Render Texture Handle (RTHandle) is a class for handling render
+        // textures that are internally used in AO rendering. It provides a
+        // transparent interface for both statically allocated RTs and
+        // temporary RTs allocated from command buffers.
 
         internal enum MipLevel { Original, L1, L2, L3, L4, L5, L6 }
 
-        internal enum BufferType
+        internal enum TextureType
         {
-            Fixed, Half, Float,
-            FixedUAV, HalfUAV, FloatUAV,
-            FixedTileUAV, HalfTileUAV, FloatTileUAV
+            Fixed, Half, Float,                        // 2D render texture
+            FixedUAV, HalfUAV, FloatUAV,               // Read/write enabled
+            FixedTiledUAV, HalfTiledUAV, FloatTiledUAV // Texture array
         }
 
-        // A wrapper class used for handling internal render textures. This
-        // provides a common interface for allocated RTs and temporary RTs
-        // (to be allocated within a command buffer).
-        internal class RTBuffer
+        internal class RTHandle
         {
-            // Base dimensions
+            // Base dimensions (shared between handles)
             static int _baseWidth;
             static int _baseHeight;
 
@@ -89,17 +113,18 @@ namespace MiniEngineAO
                 _baseHeight = h;
             }
 
+            public static bool CheckBaseDimensions(int w, int h)
+            {
+                return _baseWidth == w && _baseHeight == h;
+            }
+
             // Public properties
             public int nameID { get { return _id; } }
             public int width { get { return _width; } }
             public int height { get { return _height; } }
+            public int depth { get { return isTiled ? 16 : 1; } }
             public bool isTiled { get { return (int)_type > 5; } }
             public bool hasUAV { get { return (int)_type > 2; } }
-
-            public Vector2 inverseDimensions
-            {
-                get { return new Vector2(1.0f / width, 1.0f / height); }
-            }
 
             public RenderTargetIdentifier id
             {
@@ -112,18 +137,23 @@ namespace MiniEngineAO
                 }
             }
 
+            public Vector2 inverseDimensions
+            {
+                get { return new Vector2(1.0f / width, 1.0f / height); }
+            }
+
             // Constructor
-            public RTBuffer(string name, BufferType type, MipLevel level)
+            public RTHandle(string name, TextureType type, MipLevel level)
             {
                 _id = Shader.PropertyToID(name);
                 _type = type;
                 _level = level;
             }
 
-            // Allocate the buffer in advance.
-            public void Allocate()
+            // Allocate the buffer in advance of use.
+            public void AllocateNow()
             {
-                ResetDimensions();
+                CalculateDimensions();
 
                 if (_rt == null)
                 {
@@ -149,16 +179,16 @@ namespace MiniEngineAO
                 if (isTiled)
                 {
                     _rt.dimension = TextureDimension.Tex2DArray;
-                    _rt.volumeDepth = 16;
+                    _rt.volumeDepth = depth;
                 }
 
                 _rt.Create();
             }
 
-            // Add an allocation command to the given command buffer.
-            public void AddAllocationCommand(CommandBuffer cmd)
+            // Push the allocation command to the given command buffer.
+            public void PushAllocationCommand(CommandBuffer cmd)
             {
-                ResetDimensions();
+                CalculateDimensions();
 
                 cmd.GetTemporaryRT(
                     _id, _width, _height, 0,
@@ -167,7 +197,7 @@ namespace MiniEngineAO
                 );
             }
 
-            // Destroy internal resources.
+            // Destroy internal objects.
             public void Destroy()
             {
                 if (_rt != null)
@@ -183,7 +213,7 @@ namespace MiniEngineAO
             int _id;
             RenderTexture _rt;
             int _width, _height;
-            BufferType _type;
+            TextureType _type;
             MipLevel _level;
 
             // Determine the render texture format.
@@ -200,8 +230,8 @@ namespace MiniEngineAO
                 }
             }
 
-            // (Re)calculate the texture width and height.
-            void ResetDimensions()
+            // Calculate width/height of the texture from the base dimensions.
+            void CalculateDimensions()
             {
                 var div = 1 << (int)_level;
                 _width  = (_baseWidth  + (div - 1)) / div;
@@ -213,74 +243,32 @@ namespace MiniEngineAO
 
         #region Internal objects
 
-        RTBuffer _depthCopy;
-        RTBuffer _linearDepth;
-        RTBuffer _lowDepth1;
-        RTBuffer _lowDepth2;
-        RTBuffer _lowDepth3;
-        RTBuffer _lowDepth4;
-        RTBuffer _tiledDepth1;
-        RTBuffer _tiledDepth2;
-        RTBuffer _tiledDepth3;
-        RTBuffer _tiledDepth4;
-        RTBuffer _occlusion1;
-        RTBuffer _occlusion2;
-        RTBuffer _occlusion3;
-        RTBuffer _occlusion4;
-        RTBuffer _composite1;
-        RTBuffer _composite2;
-        RTBuffer _composite3;
-        RTBuffer _result;
+        Camera _camera;
+
+        RTHandle _depthCopy;
+        RTHandle _linearDepth;
+        RTHandle _lowDepth1;
+        RTHandle _lowDepth2;
+        RTHandle _lowDepth3;
+        RTHandle _lowDepth4;
+        RTHandle _tiledDepth1;
+        RTHandle _tiledDepth2;
+        RTHandle _tiledDepth3;
+        RTHandle _tiledDepth4;
+        RTHandle _occlusion1;
+        RTHandle _occlusion2;
+        RTHandle _occlusion3;
+        RTHandle _occlusion4;
+        RTHandle _composite1;
+        RTHandle _composite2;
+        RTHandle _composite3;
+        RTHandle _result;
 
         CommandBuffer _renderCommand;
         CommandBuffer _debugCommand;
 
         Material _utilMaterial;
-
-        #endregion
-
-        #region Private utility methods
-
-        void UpdateProperty(ref float prop, float value)
-        {
-            if (prop == value) return;
-            _noiseFilterTolerance = value;
-            UpdateCommandBuffer();
-        }
-
-        static void DestroyIfAlive(Object o)
-        {
-            if (o != null)
-            {
-                if (Application.isPlaying)
-                    Destroy(o);
-                else
-                    DestroyImmediate(o);
-            }
-        }
-
-        bool CheckIfResolvedDepthAvailable()
-        {
-            // AFAIK, resolved depth is only available on D3D11/12.
-            // TODO: Is there more proper way to determine this?
-            var rpath = GetComponent<Camera>().actualRenderingPath;
-            var gtype = SystemInfo.graphicsDeviceType;
-            return rpath == RenderingPath.DeferredShading &&
-                   (gtype == GraphicsDeviceType.Direct3D11 ||
-                    gtype == GraphicsDeviceType.Direct3D12);
-        }
-
-        // Calculate values in _ZBuferParams (built-in shader variable)
-        // We can't use _ZBufferParams in compute shaders, so this function is
-        // used to give the values in it to compute shaders.
-        static Vector4 CalculateZBufferParams(Camera camera)
-        {
-            var fpn = camera.farClipPlane / camera.nearClipPlane;
-            if (SystemInfo.usesReversedZBuffer)
-                return new Vector4(fpn - 1, 1, 0, 0);
-            else
-                return new Vector4(1 - fpn, fpn, 0, 0);
-        }
+        bool _rebuildCommandBuffers;
 
         #endregion
 
@@ -288,48 +276,35 @@ namespace MiniEngineAO
 
         void Start()
         {
-            // Determine the base dimensions of the render buffers.
-            var camera = GetComponent<Camera>();
-            RTBuffer.SetBaseDimensions(camera.pixelWidth, camera.pixelHeight);
+            _camera = GetComponent<Camera>();
 
             // We requires the camera depth texture.
-            camera.depthTextureMode = DepthTextureMode.Depth;
+            _camera.depthTextureMode = DepthTextureMode.Depth;
 
-            // Local buffer declarations.
-            _depthCopy = new RTBuffer("DepthCopy", BufferType.Float, MipLevel.Original);
-            _linearDepth = new RTBuffer("LinearDepth", BufferType.HalfUAV, MipLevel.Original);
+            // Initialize the render texture handles.
+            _depthCopy = new RTHandle("DepthCopy", TextureType.Float, MipLevel.Original);
+            _linearDepth = new RTHandle("LinearDepth", TextureType.HalfUAV, MipLevel.Original);
 
-            _lowDepth1 = new RTBuffer("LowDepth1", BufferType.FloatUAV, MipLevel.L1);
-            _lowDepth2 = new RTBuffer("LowDepth2", BufferType.FloatUAV, MipLevel.L2);
-            _lowDepth3 = new RTBuffer("LowDepth3", BufferType.FloatUAV, MipLevel.L3);
-            _lowDepth4 = new RTBuffer("LowDepth4", BufferType.FloatUAV, MipLevel.L4);
+            _lowDepth1 = new RTHandle("LowDepth1", TextureType.FloatUAV, MipLevel.L1);
+            _lowDepth2 = new RTHandle("LowDepth2", TextureType.FloatUAV, MipLevel.L2);
+            _lowDepth3 = new RTHandle("LowDepth3", TextureType.FloatUAV, MipLevel.L3);
+            _lowDepth4 = new RTHandle("LowDepth4", TextureType.FloatUAV, MipLevel.L4);
 
-            _tiledDepth1 = new RTBuffer("TiledDepth1", BufferType.HalfTileUAV, MipLevel.L3);
-            _tiledDepth2 = new RTBuffer("TiledDepth2", BufferType.HalfTileUAV, MipLevel.L4);
-            _tiledDepth3 = new RTBuffer("TiledDepth3", BufferType.HalfTileUAV, MipLevel.L5);
-            _tiledDepth4 = new RTBuffer("TiledDepth4", BufferType.HalfTileUAV, MipLevel.L6);
+            _tiledDepth1 = new RTHandle("TiledDepth1", TextureType.HalfTiledUAV, MipLevel.L3);
+            _tiledDepth2 = new RTHandle("TiledDepth2", TextureType.HalfTiledUAV, MipLevel.L4);
+            _tiledDepth3 = new RTHandle("TiledDepth3", TextureType.HalfTiledUAV, MipLevel.L5);
+            _tiledDepth4 = new RTHandle("TiledDepth4", TextureType.HalfTiledUAV, MipLevel.L6);
 
-            _occlusion1 = new RTBuffer("Occlusion1", BufferType.FixedUAV, MipLevel.L1);
-            _occlusion2 = new RTBuffer("Occlusion2", BufferType.FixedUAV, MipLevel.L2);
-            _occlusion3 = new RTBuffer("Occlusion3", BufferType.FixedUAV, MipLevel.L3);
-            _occlusion4 = new RTBuffer("Occlusion4", BufferType.FixedUAV, MipLevel.L4);
+            _occlusion1 = new RTHandle("Occlusion1", TextureType.FixedUAV, MipLevel.L1);
+            _occlusion2 = new RTHandle("Occlusion2", TextureType.FixedUAV, MipLevel.L2);
+            _occlusion3 = new RTHandle("Occlusion3", TextureType.FixedUAV, MipLevel.L3);
+            _occlusion4 = new RTHandle("Occlusion4", TextureType.FixedUAV, MipLevel.L4);
 
-            _composite1 = new RTBuffer("Composite1", BufferType.FixedUAV, MipLevel.L1);
-            _composite2 = new RTBuffer("Composite2", BufferType.FixedUAV, MipLevel.L2);
-            _composite3 = new RTBuffer("Composite3", BufferType.FixedUAV, MipLevel.L3);
+            _composite1 = new RTHandle("Composite1", TextureType.FixedUAV, MipLevel.L1);
+            _composite2 = new RTHandle("Composite2", TextureType.FixedUAV, MipLevel.L2);
+            _composite3 = new RTHandle("Composite3", TextureType.FixedUAV, MipLevel.L3);
 
-            _result = new RTBuffer("AmbientOcclusion", BufferType.FixedUAV, MipLevel.Original);
-
-            // We can't allocate tiled buffers (texture arrays) within
-            // a command buffer, so allocate them in advance.
-            _tiledDepth1.Allocate();
-            _tiledDepth2.Allocate();
-            _tiledDepth3.Allocate();
-            _tiledDepth4.Allocate();
-
-            // The result buffer is to be reused between frames, so allocate it
-            // in advance.
-            _result.Allocate();
+            _result = new RTHandle("AmbientOcclusion", TextureType.FixedUAV, MipLevel.Original);
 
             // Initialize the command buffers.
             _renderCommand = new CommandBuffer();
@@ -338,9 +313,9 @@ namespace MiniEngineAO
             _debugCommand = new CommandBuffer();
             _debugCommand.name = "SSAO Debug";
 
+            // Initialize misc things.
             _utilMaterial = new Material(_utilShader);
-
-            UpdateCommandBuffer();
+            _rebuildCommandBuffers = true;
         }
 
         void OnEnable()
@@ -351,6 +326,21 @@ namespace MiniEngineAO
         void OnDisable()
         {
             if (_renderCommand != null) UnregisterCommandBuffers();
+        }
+
+        void LateUpdate()
+        {
+            // Check if the screen size was changed from the previous frame.
+            // We have to rebuild the command buffer if it's changed.
+            _rebuildCommandBuffers |=
+                !RTHandle.CheckBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+
+            // Rebuild the command buffers if needed.
+            if (_rebuildCommandBuffers)
+            {
+                RebuildCommandBuffers();
+                _rebuildCommandBuffers = false;
+            }
         }
 
         void OnDestroy()
@@ -364,14 +354,110 @@ namespace MiniEngineAO
             _renderCommand.Dispose();
             _debugCommand.Dispose();
 
-            DestroyIfAlive(_utilMaterial);
+            if (_utilMaterial != null)
+            {
+                if (Application.isPlaying)
+                    Destroy(_utilMaterial);
+                else
+                    DestroyImmediate(_utilMaterial);
+            }
         }
 
         #endregion
 
-        #region Array arguments for the render kernel
+        #region Private methods
 
-        // These arrays are reused between frames to reduce GC allocation.
+        void RegisterCommandBuffers()
+        {
+            _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
+            _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
+        }
+
+        void UnregisterCommandBuffers()
+        {
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
+        }
+
+        void RebuildCommandBuffers()
+        {
+            UnregisterCommandBuffers();
+
+            // Update the base dimensions and reallocate static RTs.
+            RTHandle.SetBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+
+            _tiledDepth1.AllocateNow();
+            _tiledDepth2.AllocateNow();
+            _tiledDepth3.AllocateNow();
+            _tiledDepth4.AllocateNow();
+
+            _result.AllocateNow();
+
+            // Rebuild the render commands.
+            _renderCommand.Clear();
+
+            PushDownsampleCommands(_renderCommand);
+
+            _occlusion1.PushAllocationCommand(_renderCommand);
+            _occlusion2.PushAllocationCommand(_renderCommand);
+            _occlusion3.PushAllocationCommand(_renderCommand);
+            _occlusion4.PushAllocationCommand(_renderCommand);
+
+            var tanHalfFovH = CalculateTanHalfFovHeight();
+            PushRenderCommands(_renderCommand, _tiledDepth1, _occlusion1, tanHalfFovH);
+            PushRenderCommands(_renderCommand, _tiledDepth2, _occlusion2, tanHalfFovH);
+            PushRenderCommands(_renderCommand, _tiledDepth3, _occlusion3, tanHalfFovH);
+            PushRenderCommands(_renderCommand, _tiledDepth4, _occlusion4, tanHalfFovH);
+
+            _composite1.PushAllocationCommand(_renderCommand);
+            _composite2.PushAllocationCommand(_renderCommand);
+            _composite3.PushAllocationCommand(_renderCommand);
+
+            PushUpsampleCommands(_renderCommand, _lowDepth4, _occlusion4, _lowDepth3, _occlusion3, _composite3);
+            PushUpsampleCommands(_renderCommand, _lowDepth3, _composite3, _lowDepth2, _occlusion2, _composite2);
+            PushUpsampleCommands(_renderCommand, _lowDepth2, _composite2, _lowDepth1, _occlusion1, _composite1);
+            PushUpsampleCommands(_renderCommand, _lowDepth1, _composite1, _linearDepth, null, _result);
+
+            // Rebuild the debug commands.
+            _debugCommand.Clear();
+            PushDebugCommands(_debugCommand);
+
+            RegisterCommandBuffers();
+        }
+
+        #endregion
+
+        #region Utilities for command buffer builders
+
+        bool CheckIfResolvedDepthAvailable()
+        {
+            // AFAIK, resolved depth is only available on D3D11/12.
+            // TODO: Is there more proper way to determine this?
+            var rpath = _camera.actualRenderingPath;
+            var gtype = SystemInfo.graphicsDeviceType;
+            return rpath == RenderingPath.DeferredShading &&
+                  (gtype == GraphicsDeviceType.Direct3D11 ||
+                   gtype == GraphicsDeviceType.Direct3D12);
+        }
+
+        // Calculate values in _ZBuferParams (built-in shader variable)
+        // We can't use _ZBufferParams in compute shaders, so this function is
+        // used to give the values in it to compute shaders.
+        Vector4 CalculateZBufferParams()
+        {
+            var fpn = _camera.farClipPlane / _camera.nearClipPlane;
+            if (SystemInfo.usesReversedZBuffer)
+                return new Vector4(fpn - 1, 1, 0, 0);
+            else
+                return new Vector4(1 - fpn, fpn, 0, 0);
+        }
+
+        float CalculateTanHalfFovHeight()
+        {
+            return 1 / _camera.projectionMatrix[0, 0];
+        }
+
+        // The arrays below are reused between frames to reduce GC allocation.
 
         static readonly float [] SampleThickness = {
             Mathf.Sqrt(1 - 0.2f * 0.2f),
@@ -395,112 +481,58 @@ namespace MiniEngineAO
 
         #region Command buffer builders
 
-        void RegisterCommandBuffers()
-        {
-            var camera = GetComponent<Camera>();
-            camera.AddCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
-            camera.AddCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
-        }
-
-        void UnregisterCommandBuffers()
-        {
-            var camera = GetComponent<Camera>();
-            camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
-            camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
-        }
-
-        public void UpdateCommandBuffer()
-        {
-            var camera = GetComponent<Camera>();
-
-            // Remove the old commands from the camera.
-            if (_renderCommand != null) UnregisterCommandBuffers();
-
-            // Rebuild the render commands.
-            _renderCommand.Clear();
-
-            AddDownsampleCommands(_renderCommand, CalculateZBufferParams(camera));
-
-            _occlusion1.AddAllocationCommand(_renderCommand);
-            _occlusion2.AddAllocationCommand(_renderCommand);
-            _occlusion3.AddAllocationCommand(_renderCommand);
-            _occlusion4.AddAllocationCommand(_renderCommand);
-
-            var tanHalfFovH = 1 / camera.projectionMatrix[0, 0];
-            AddRenderCommands(_renderCommand, _tiledDepth1, _occlusion1, tanHalfFovH);
-            AddRenderCommands(_renderCommand, _tiledDepth2, _occlusion2, tanHalfFovH);
-            AddRenderCommands(_renderCommand, _tiledDepth3, _occlusion3, tanHalfFovH);
-            AddRenderCommands(_renderCommand, _tiledDepth4, _occlusion4, tanHalfFovH);
-
-            _composite1.AddAllocationCommand(_renderCommand);
-            _composite2.AddAllocationCommand(_renderCommand);
-            _composite3.AddAllocationCommand(_renderCommand);
-
-            AddUpsampleCommands(_renderCommand, _lowDepth4, _occlusion4, _lowDepth3, _occlusion3, _composite3);
-            AddUpsampleCommands(_renderCommand, _lowDepth3, _composite3, _lowDepth2, _occlusion2, _composite2);
-            AddUpsampleCommands(_renderCommand, _lowDepth2, _composite2, _lowDepth1, _occlusion1, _composite1);
-            AddUpsampleCommands(_renderCommand, _lowDepth1, _composite1, _linearDepth, null, _result);
-
-            // Rebuild the debug commands.
-            _debugCommand.Clear();
-            AddDebugCommands(_debugCommand);
-
-            // Add the updated commands to the camera.
-            RegisterCommandBuffers();
-        }
-
-        void AddDownsampleCommands(CommandBuffer cmd, Vector4 zBufferParams)
+        void PushDownsampleCommands(CommandBuffer cmd)
         {
             // Make a copy of the depth texture, or reuse the resolved depth
-            // buffer (it's only available in some specific cases).
+            // buffer (it's only available in some specific situations).
             var useDepthCopy = !CheckIfResolvedDepthAvailable();
             if (useDepthCopy)
             {
-                _depthCopy.AddAllocationCommand(cmd);
-                _renderCommand.Blit(null, _depthCopy.id, _utilMaterial, 0);
+                _depthCopy.PushAllocationCommand(cmd);
+                cmd.Blit(null, _depthCopy.id, _utilMaterial, 0);
             }
 
-            // Buffer allocations.
-            _linearDepth.AddAllocationCommand(cmd);
-            _lowDepth1.AddAllocationCommand(cmd);
-            _lowDepth2.AddAllocationCommand(cmd);
-            _lowDepth3.AddAllocationCommand(cmd);
-            _lowDepth4.AddAllocationCommand(cmd);
+            // Temporary buffer allocations.
+            _linearDepth.PushAllocationCommand(cmd);
+            _lowDepth1.PushAllocationCommand(cmd);
+            _lowDepth2.PushAllocationCommand(cmd);
+            _lowDepth3.PushAllocationCommand(cmd);
+            _lowDepth4.PushAllocationCommand(cmd);
 
             // 1st downsampling pass.
             var cs = _downsample1Compute;
             var kernel = cs.FindKernel("main");
 
-            _renderCommand.SetComputeTextureParam(cs, kernel, "LinearZ", _linearDepth.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS2x", _lowDepth1.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepth2.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS2xAtlas", _tiledDepth1.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS4xAtlas", _tiledDepth2.id);
-            _renderCommand.SetComputeVectorParam(cs, "ZBufferParams", zBufferParams);
+            cmd.SetComputeTextureParam(cs, kernel, "LinearZ", _linearDepth.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS2x", _lowDepth1.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepth2.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS2xAtlas", _tiledDepth1.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS4xAtlas", _tiledDepth2.id);
+            cmd.SetComputeVectorParam(cs, "ZBufferParams", CalculateZBufferParams());
 
             if (useDepthCopy)
-                _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", _depthCopy.id);
+                cmd.SetComputeTextureParam(cs, kernel, "Depth", _depthCopy.id);
             else
-                _renderCommand.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
+                cmd.SetComputeTextureParam(cs, kernel, "Depth", BuiltinRenderTextureType.ResolvedDepth);
 
-            _renderCommand.DispatchCompute(cs, kernel, _tiledDepth2.width, _tiledDepth2.height, 1);
+            cmd.DispatchCompute(cs, kernel, _tiledDepth2.width, _tiledDepth2.height, 1);
 
-            if (useDepthCopy) _renderCommand.ReleaseTemporaryRT(_depthCopy.nameID);
+            if (useDepthCopy) cmd.ReleaseTemporaryRT(_depthCopy.nameID);
 
             // 2nd downsampling pass.
             cs = _downsample2Compute;
             kernel = cs.FindKernel("main");
 
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepth2.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS8x", _lowDepth3.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS16x", _lowDepth4.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS8xAtlas", _tiledDepth3.id);
-            _renderCommand.SetComputeTextureParam(cs, kernel, "DS16xAtlas", _tiledDepth4.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS4x", _lowDepth2.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS8x", _lowDepth3.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS16x", _lowDepth4.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS8xAtlas", _tiledDepth3.id);
+            cmd.SetComputeTextureParam(cs, kernel, "DS16xAtlas", _tiledDepth4.id);
 
-            _renderCommand.DispatchCompute(cs, kernel, _tiledDepth4.width, _tiledDepth4.height, 1);
+            cmd.DispatchCompute(cs, kernel, _tiledDepth4.width, _tiledDepth4.height, 1);
         }
 
-        void AddRenderCommands(CommandBuffer cmd, RTBuffer source, RTBuffer dest, float TanHalfFovH)
+        void PushRenderCommands(CommandBuffer cmd, RTHandle source, RTHandle dest, float TanHalfFovH)
         {
             // Here we compute multipliers that convert the center depth value into (the reciprocal of)
             // sphere thicknesses at each sample location.  This assumes a maximum sample radius of 5
@@ -566,35 +598,38 @@ namespace MiniEngineAO
                 SampleWeightTable[i] /= totalWeight;
 
             // Set the arguments for the render kernel.
-            var kernel = _renderCompute.FindKernel("main_interleaved");
-            _renderCommand.SetComputeFloatParams(_renderCompute, "gInvThicknessTable", InvThicknessTable);
-            _renderCommand.SetComputeFloatParams(_renderCompute, "gSampleWeightTable", SampleWeightTable);
-            _renderCommand.SetComputeVectorParam(_renderCompute, "gInvSliceDimension", source.inverseDimensions);
-            _renderCommand.SetComputeFloatParam(_renderCompute, "gRejectFadeoff", -1 / _rejectionFalloff);
-            _renderCommand.SetComputeFloatParam(_renderCompute, "gRcpAccentuation", 1 / (1 + _accentuation));
-            _renderCommand.SetComputeTextureParam(_renderCompute, kernel, "DepthTex", source.id);
-            _renderCommand.SetComputeTextureParam(_renderCompute, kernel, "Occlusion", dest.id);
+            var cs = _renderCompute;
+            var kernel = cs.FindKernel("main_interleaved");
+
+            cmd.SetComputeFloatParams(cs, "gInvThicknessTable", InvThicknessTable);
+            cmd.SetComputeFloatParams(cs, "gSampleWeightTable", SampleWeightTable);
+            cmd.SetComputeVectorParam(cs, "gInvSliceDimension", source.inverseDimensions);
+            cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _rejectionFalloff);
+            cmd.SetComputeFloatParam(cs, "gRcpAccentuation", 1 / (1 + _accentuation));
+            cmd.SetComputeTextureParam(cs, kernel, "DepthTex", source.id);
+            cmd.SetComputeTextureParam(cs, kernel, "Occlusion", dest.id);
 
             // Calculate the thread group count and add a dispatch command with them.
             uint xsize, ysize, zsize;
-            _renderCompute.GetKernelThreadGroupSizes(kernel, out xsize, out ysize, out zsize);
+            cs.GetKernelThreadGroupSizes(kernel, out xsize, out ysize, out zsize);
 
-            var xcount = (source.width  + (int)xsize - 1) / (int)xsize;
-            var ycount = (source.height + (int)ysize - 1) / (int)ysize;
-            var zcount = ((source.isTiled ? 16 : 1) + (int)zsize - 1) / (int)zsize;
-
-            _renderCommand.DispatchCompute(_renderCompute, kernel, xcount, ycount, zcount);
+            cmd.DispatchCompute(
+                cs, kernel,
+                (source.width  + (int)xsize - 1) / (int)xsize,
+                (source.height + (int)ysize - 1) / (int)ysize,
+                (source.depth  + (int)zsize - 1) / (int)zsize
+            );
         }
 
-        void AddUpsampleCommands(
+        void PushUpsampleCommands(
             CommandBuffer cmd,
-            RTBuffer lowResDepth, RTBuffer interleavedAO,
-            RTBuffer highResDepth, RTBuffer highResAO,
-            RTBuffer dest
+            RTHandle lowResDepth, RTHandle interleavedAO,
+            RTHandle highResDepth, RTHandle highResAO,
+            RTHandle dest
         )
         {
-            var kernelName = (highResAO == null) ? "main" : "main_blendout";
-            var kernel = _upsampleCompute.FindKernel(kernelName);
+            var cs = _upsampleCompute;
+            var kernel = cs.FindKernel((highResAO == null) ? "main" : "main_blendout");
 
             var stepSize = 1920.0f / lowResDepth.width;
             var blurTolerance = 1 - Mathf.Pow(10, _blurTolerance) * stepSize;
@@ -602,31 +637,31 @@ namespace MiniEngineAO
             var upsampleTolerance = Mathf.Pow(10, _upsampleTolerance);
             var noiseFilterWeight = 1 / (Mathf.Pow(10, _noiseFilterTolerance) + upsampleTolerance);
 
-            _renderCommand.SetComputeVectorParam(_upsampleCompute, "InvLowResolution", lowResDepth.inverseDimensions);
-            _renderCommand.SetComputeVectorParam(_upsampleCompute, "InvHighResolution", highResDepth.inverseDimensions);
-            _renderCommand.SetComputeFloatParam(_upsampleCompute, "NoiseFilterStrength", noiseFilterWeight);
-            _renderCommand.SetComputeFloatParam(_upsampleCompute, "StepSize", stepSize);
-            _renderCommand.SetComputeFloatParam(_upsampleCompute, "kBlurTolerance", blurTolerance);
-            _renderCommand.SetComputeFloatParam(_upsampleCompute, "kUpsampleTolerance", upsampleTolerance);
+            cmd.SetComputeVectorParam(cs, "InvLowResolution", lowResDepth.inverseDimensions);
+            cmd.SetComputeVectorParam(cs, "InvHighResolution", highResDepth.inverseDimensions);
+            cmd.SetComputeFloatParam(cs, "NoiseFilterStrength", noiseFilterWeight);
+            cmd.SetComputeFloatParam(cs, "StepSize", stepSize);
+            cmd.SetComputeFloatParam(cs, "kBlurTolerance", blurTolerance);
+            cmd.SetComputeFloatParam(cs, "kUpsampleTolerance", upsampleTolerance);
 
-            _renderCommand.SetComputeTextureParam(_upsampleCompute, kernel, "LoResDB", lowResDepth.id);
-            _renderCommand.SetComputeTextureParam(_upsampleCompute, kernel, "HiResDB", highResDepth.id);
-            _renderCommand.SetComputeTextureParam(_upsampleCompute, kernel, "LoResAO1", interleavedAO.id);
+            cmd.SetComputeTextureParam(cs, kernel, "LoResDB", lowResDepth.id);
+            cmd.SetComputeTextureParam(cs, kernel, "HiResDB", highResDepth.id);
+            cmd.SetComputeTextureParam(cs, kernel, "LoResAO1", interleavedAO.id);
 
             if (highResAO != null)
-                _renderCommand.SetComputeTextureParam(_upsampleCompute, kernel, "HiResAO", highResAO.id);
+                cmd.SetComputeTextureParam(cs, kernel, "HiResAO", highResAO.id);
 
-            _renderCommand.SetComputeTextureParam(_upsampleCompute, kernel, "AoResult", dest.id);
+            cmd.SetComputeTextureParam(cs, kernel, "AoResult", dest.id);
 
             var xcount = (highResDepth.width  + 17) / 16;
             var ycount = (highResDepth.height + 17) / 16;
-            _renderCommand.DispatchCompute(_upsampleCompute, kernel, xcount, ycount, 1);
+            cmd.DispatchCompute(cs, kernel, xcount, ycount, 1);
         }
 
-        void AddDebugCommands(CommandBuffer cmd)
+        void PushDebugCommands(CommandBuffer cmd)
         {
-            _debugCommand.SetGlobalTexture("_AOTexture", _result.id);
-            _debugCommand.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
+            cmd.SetGlobalTexture("_AOTexture", _result.id);
+            cmd.Blit(null, BuiltinRenderTextureType.CurrentActive, _utilMaterial, 1);
         }
 
         #endregion
