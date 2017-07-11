@@ -46,7 +46,7 @@ namespace MiniEngineAO
             EditorGUILayout.PropertyField(_rejectionFalloff);
             EditorGUILayout.PropertyField(_accentuation);
 
-            if (Application.isPlaying && EditorGUI.EndChangeCheck())
+            if (EditorGUI.EndChangeCheck())
                 foreach (AmbientOcclusion ao in targets) ao.RequestRebuildCommandBuffers();
 
             serializedObject.ApplyModifiedProperties();

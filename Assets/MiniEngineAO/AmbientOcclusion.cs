@@ -6,6 +6,7 @@ using UnityEngine.Rendering;
 
 namespace MiniEngineAO
 {
+    [ExecuteInEditMode]
     [RequireComponent(typeof(Camera))]
     public sealed class AmbientOcclusion : MonoBehaviour
     {
@@ -163,6 +164,7 @@ namespace MiniEngineAO
                         renderTextureFormat,
                         RenderTextureReadWrite.Linear
                     );
+                    _rt.hideFlags = HideFlags.DontSave;
                 }
                 else
                 {
@@ -274,53 +276,10 @@ namespace MiniEngineAO
 
         #region MonoBehaviour functions
 
-        void Start()
-        {
-            _camera = GetComponent<Camera>();
-
-            // We requires the camera depth texture.
-            _camera.depthTextureMode = DepthTextureMode.Depth;
-
-            // Initialize the render texture handles.
-            _depthCopy = new RTHandle("DepthCopy", TextureType.Float, MipLevel.Original);
-            _linearDepth = new RTHandle("LinearDepth", TextureType.HalfUAV, MipLevel.Original);
-
-            _lowDepth1 = new RTHandle("LowDepth1", TextureType.FloatUAV, MipLevel.L1);
-            _lowDepth2 = new RTHandle("LowDepth2", TextureType.FloatUAV, MipLevel.L2);
-            _lowDepth3 = new RTHandle("LowDepth3", TextureType.FloatUAV, MipLevel.L3);
-            _lowDepth4 = new RTHandle("LowDepth4", TextureType.FloatUAV, MipLevel.L4);
-
-            _tiledDepth1 = new RTHandle("TiledDepth1", TextureType.HalfTiledUAV, MipLevel.L3);
-            _tiledDepth2 = new RTHandle("TiledDepth2", TextureType.HalfTiledUAV, MipLevel.L4);
-            _tiledDepth3 = new RTHandle("TiledDepth3", TextureType.HalfTiledUAV, MipLevel.L5);
-            _tiledDepth4 = new RTHandle("TiledDepth4", TextureType.HalfTiledUAV, MipLevel.L6);
-
-            _occlusion1 = new RTHandle("Occlusion1", TextureType.FixedUAV, MipLevel.L1);
-            _occlusion2 = new RTHandle("Occlusion2", TextureType.FixedUAV, MipLevel.L2);
-            _occlusion3 = new RTHandle("Occlusion3", TextureType.FixedUAV, MipLevel.L3);
-            _occlusion4 = new RTHandle("Occlusion4", TextureType.FixedUAV, MipLevel.L4);
-
-            _composite1 = new RTHandle("Composite1", TextureType.FixedUAV, MipLevel.L1);
-            _composite2 = new RTHandle("Composite2", TextureType.FixedUAV, MipLevel.L2);
-            _composite3 = new RTHandle("Composite3", TextureType.FixedUAV, MipLevel.L3);
-
-            _result = new RTHandle("AmbientOcclusion", TextureType.FixedUAV, MipLevel.Original);
-
-            // Initialize the command buffers.
-            _renderCommand = new CommandBuffer();
-            _renderCommand.name = "SSAO";
-
-            _debugCommand = new CommandBuffer();
-            _debugCommand.name = "SSAO Debug";
-
-            // Initialize misc things.
-            _utilMaterial = new Material(_utilShader);
-            _rebuildCommandBuffers = true;
-        }
-
         void OnEnable()
         {
             if (_renderCommand != null) RegisterCommandBuffers();
+            _rebuildCommandBuffers = true;
         }
 
         void OnDisable()
@@ -330,6 +289,8 @@ namespace MiniEngineAO
 
         void LateUpdate()
         {
+            DoLazyInitialization();
+
             // Check if the screen size was changed from the previous frame.
             // We have to rebuild the command buffer if it's changed.
             _rebuildCommandBuffers |=
@@ -345,14 +306,20 @@ namespace MiniEngineAO
 
         void OnDestroy()
         {
-            _tiledDepth1.Destroy();
-            _tiledDepth2.Destroy();
-            _tiledDepth3.Destroy();
-            _tiledDepth4.Destroy();
-            _result.Destroy();
+            if (_result != null)
+            {
+                _tiledDepth1.Destroy();
+                _tiledDepth2.Destroy();
+                _tiledDepth3.Destroy();
+                _tiledDepth4.Destroy();
+                _result.Destroy();
+            }
 
-            _renderCommand.Dispose();
-            _debugCommand.Dispose();
+            if (_renderCommand != null)
+            {
+                _renderCommand.Dispose();
+                _debugCommand.Dispose();
+            }
 
             if (_utilMaterial != null)
             {
@@ -377,6 +344,62 @@ namespace MiniEngineAO
         {
             _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _debugCommand);
+        }
+
+        void DoLazyInitialization()
+        {
+            // Camera reference
+            if (_camera == null)
+            {
+                _camera = GetComponent<Camera>();
+                // We requires the camera depth texture.
+                _camera.depthTextureMode = DepthTextureMode.Depth;
+            }
+
+            // Render texture handles
+            if (_result == null)
+            {
+                _depthCopy = new RTHandle("DepthCopy", TextureType.Float, MipLevel.Original);
+                _linearDepth = new RTHandle("LinearDepth", TextureType.HalfUAV, MipLevel.Original);
+
+                _lowDepth1 = new RTHandle("LowDepth1", TextureType.FloatUAV, MipLevel.L1);
+                _lowDepth2 = new RTHandle("LowDepth2", TextureType.FloatUAV, MipLevel.L2);
+                _lowDepth3 = new RTHandle("LowDepth3", TextureType.FloatUAV, MipLevel.L3);
+                _lowDepth4 = new RTHandle("LowDepth4", TextureType.FloatUAV, MipLevel.L4);
+
+                _tiledDepth1 = new RTHandle("TiledDepth1", TextureType.HalfTiledUAV, MipLevel.L3);
+                _tiledDepth2 = new RTHandle("TiledDepth2", TextureType.HalfTiledUAV, MipLevel.L4);
+                _tiledDepth3 = new RTHandle("TiledDepth3", TextureType.HalfTiledUAV, MipLevel.L5);
+                _tiledDepth4 = new RTHandle("TiledDepth4", TextureType.HalfTiledUAV, MipLevel.L6);
+
+                _occlusion1 = new RTHandle("Occlusion1", TextureType.FixedUAV, MipLevel.L1);
+                _occlusion2 = new RTHandle("Occlusion2", TextureType.FixedUAV, MipLevel.L2);
+                _occlusion3 = new RTHandle("Occlusion3", TextureType.FixedUAV, MipLevel.L3);
+                _occlusion4 = new RTHandle("Occlusion4", TextureType.FixedUAV, MipLevel.L4);
+
+                _composite1 = new RTHandle("Composite1", TextureType.FixedUAV, MipLevel.L1);
+                _composite2 = new RTHandle("Composite2", TextureType.FixedUAV, MipLevel.L2);
+                _composite3 = new RTHandle("Composite3", TextureType.FixedUAV, MipLevel.L3);
+
+                _result = new RTHandle("AmbientOcclusion", TextureType.FixedUAV, MipLevel.Original);
+            }
+
+            // Command buffers
+            if (_renderCommand == null)
+            {
+                _renderCommand = new CommandBuffer();
+                _renderCommand.name = "SSAO";
+
+                _debugCommand = new CommandBuffer();
+                _debugCommand.name = "SSAO Debug";
+            }
+
+            // Materials
+            if (_utilMaterial == null)
+            {
+                _utilMaterial = new Material(_utilShader);
+                _utilMaterial.hideFlags = HideFlags.DontSave;
+            }
         }
 
         void RebuildCommandBuffers()
