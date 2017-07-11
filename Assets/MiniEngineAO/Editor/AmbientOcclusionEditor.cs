@@ -34,8 +34,6 @@ namespace MiniEngineAO
         {
             serializedObject.Update();
 
-            EditorGUI.BeginChangeCheck();
-
             EditorGUILayout.LabelField(Labels.filterTolerance);
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(_noiseFilterTolerance, Labels.denoise);
@@ -45,9 +43,6 @@ namespace MiniEngineAO
 
             EditorGUILayout.PropertyField(_rejectionFalloff);
             EditorGUILayout.PropertyField(_accentuation);
-
-            if (EditorGUI.EndChangeCheck())
-                foreach (AmbientOcclusion ao in targets) ao.RequestRebuildCommandBuffers();
 
             serializedObject.ApplyModifiedProperties();
         }

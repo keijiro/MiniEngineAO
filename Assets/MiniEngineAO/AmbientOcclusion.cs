@@ -10,9 +10,9 @@ namespace MiniEngineAO
     [RequireComponent(typeof(Camera))]
     public sealed class AmbientOcclusion : MonoBehaviour
     {
-        #region Exposed attributes
+        #region Exposed properties
 
-        // These attributes are simply exposed from the original MiniEngine
+        // These properties are simply exposed from the original MiniEngine
         // AO shader. Some of them are not useful nor intuitive enough.
         // TODO: Needs UI/UX rework.
 
@@ -21,7 +21,7 @@ namespace MiniEngineAO
         public float noiseFilterTolerance
         {
             get { return _noiseFilterTolerance; }
-            set { UpdateProperty(ref _noiseFilterTolerance, value); }
+            set { _noiseFilterTolerance = value; }
         }
 
         [SerializeField, Range(-8, -1)] float _blurTolerance = -5;
@@ -29,7 +29,7 @@ namespace MiniEngineAO
         public float blurTolerance
         {
             get { return _blurTolerance; }
-            set { UpdateProperty(ref _blurTolerance, value); }
+            set { _blurTolerance = value; }
         }
 
         [SerializeField, Range(-12, -1)] float _upsampleTolerance = -7;
@@ -37,7 +37,7 @@ namespace MiniEngineAO
         public float upsampleTolerance
         {
             get { return _upsampleTolerance; }
-            set { UpdateProperty(ref _upsampleTolerance, value); }
+            set { _upsampleTolerance = value; }
         }
 
         [SerializeField, Range(1, 10)] float _rejectionFalloff = 2.5f;
@@ -45,7 +45,7 @@ namespace MiniEngineAO
         public float rejectionFalloff
         {
             get { return _rejectionFalloff; }
-            set { UpdateProperty(ref _rejectionFalloff, value); }
+            set { _rejectionFalloff = value; }
         }
 
         [SerializeField, Range(0, 1)] float _accentuation = 0.1f;
@@ -53,25 +53,7 @@ namespace MiniEngineAO
         public float accentuation
         {
             get { return _accentuation; }
-            set { UpdateProperty(ref _accentuation, value); }
-        }
-
-        void UpdateProperty(ref float prop, float value)
-        {
-            if (prop == value) return;
-            prop = value;
-            RequestRebuildCommandBuffers();
-        }
-
-        #endregion
-
-        #region Public methods
-
-        // Force rebuilding the internal command buffers, mainly used from the
-        // Editor.
-        public void RequestRebuildCommandBuffers()
-        {
-            _rebuildCommandBuffers = true;
+            set { _accentuation = value; }
         }
 
         #endregion
@@ -83,6 +65,39 @@ namespace MiniEngineAO
         [SerializeField, HideInInspector] ComputeShader _renderCompute;
         [SerializeField, HideInInspector] ComputeShader _upsampleCompute;
         [SerializeField, HideInInspector] Shader _utilShader;
+
+        #endregion
+
+        #region Detecting property changes
+
+        float _noiseFilterToleranceOld;
+        float _blurToleranceOld;
+        float _upsampleToleranceOld;
+        float _rejectionFalloffOld;
+        float _accentuationOld;
+
+        bool CheckUpdate(ref float oldValue, float current)
+        {
+            if (oldValue != current)
+            {
+                oldValue = current;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        bool CheckPropertiesChanged()
+        {
+            return
+                CheckUpdate(ref _noiseFilterToleranceOld, _noiseFilterTolerance) ||
+                CheckUpdate(ref _blurToleranceOld,        _blurTolerance       ) ||
+                CheckUpdate(ref _upsampleToleranceOld,    _upsampleTolerance   ) ||
+                CheckUpdate(ref _rejectionFalloffOld,     _rejectionFalloff    ) ||
+                CheckUpdate(ref _accentuationOld,         _accentuation        );
+        }
 
         #endregion
 
@@ -270,16 +285,10 @@ namespace MiniEngineAO
         CommandBuffer _debugCommand;
 
         Material _utilMaterial;
-        bool _rebuildCommandBuffers;
 
         #endregion
 
         #region MonoBehaviour functions
-
-        void Start()
-        {
-            _rebuildCommandBuffers = true;
-        }
 
         void OnEnable()
         {
@@ -295,21 +304,18 @@ namespace MiniEngineAO
         {
             DoLazyInitialization();
 
+            // Check if we have to rebuild the command buffers.
+            var rebuild = CheckPropertiesChanged();
+
             // Check if the screen size was changed from the previous frame.
             // We have to rebuild the command buffer if it's changed.
-            _rebuildCommandBuffers |=
-                !RTHandle.CheckBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+            rebuild |= !RTHandle.CheckBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
 
             // In edit mode, it's difficult to check all the elements that
             // affect the AO, so we update the command buffer every time.
-            _rebuildCommandBuffers |= !Application.isPlaying;
+            rebuild |= !Application.isPlaying;
 
-            // Rebuild the command buffers if needed.
-            if (_rebuildCommandBuffers)
-            {
-                RebuildCommandBuffers();
-                _rebuildCommandBuffers = false;
-            }
+            if (rebuild) RebuildCommandBuffers();
         }
 
         void OnDestroy()
