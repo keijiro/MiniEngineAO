@@ -22,15 +22,7 @@ Shader "Hidden/MiniEngineAO/Util"
         float2 uv : TEXCOORD0;
     };
 
-    Varyings VertTraditionalBlit(Attributes input)
-    {
-        Varyings o;
-        o.vertex = UnityObjectToClipPos(input.vertex);
-        o.uv = input.uv;
-        return o;
-    }
-
-    Varyings VertProceduralBlit(uint vid : SV_VertexID)
+    Varyings Vert(uint vid : SV_VertexID)
     {
         float vx = vid == 1 ? 2 : 0;
         float vy = vid == 2 ? -1 : 1;
@@ -53,7 +45,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             CGPROGRAM
 
-            #pragma vertex VertTraditionalBlit
+            #pragma vertex Vert
             #pragma fragment Frag
 
             sampler2D_float _CameraDepthTexture;
@@ -74,7 +66,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             CGPROGRAM
 
-            #pragma vertex VertProceduralBlit
+            #pragma vertex Vert
             #pragma fragment Frag
 
             sampler2D _AOTexture;
@@ -105,7 +97,7 @@ Shader "Hidden/MiniEngineAO/Util"
 
             CGPROGRAM
 
-            #pragma vertex VertProceduralBlit
+            #pragma vertex Vert
             #pragma fragment Frag
 
             sampler2D _AOTexture;

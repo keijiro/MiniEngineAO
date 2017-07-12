@@ -547,7 +547,8 @@ namespace MiniEngineAO
             if (useDepthCopy)
             {
                 _depthCopy.PushAllocationCommand(cmd);
-                cmd.Blit(null, _depthCopy.id, _utilMaterial, 0);
+                cmd.SetRenderTarget(_depthCopy.id);
+                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 0, MeshTopology.Triangles, 3);
             }
 
             // Temporary buffer allocations.
