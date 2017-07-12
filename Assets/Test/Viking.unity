@@ -233,8 +233,8 @@ MonoBehaviour:
   _noiseFilterTolerance: -3
   _blurTolerance: -5
   _upsampleTolerance: -7
-  _rejectionFalloff: 4.06
-  _accentuation: 0.328
+  _rejectionFalloff: 2.5
+  _accentuation: 0.2
   _downsample1Compute: {fileID: 7200000, guid: 659dc93a3764e164e8dafb2061ff317b, type: 3}
   _downsample2Compute: {fileID: 7200000, guid: dc4dd2f3a1157884e95a081b25b5731d, type: 3}
   _renderCompute: {fileID: 7200000, guid: e49d5d8e57b0515469bb1ef4bf07b8dd, type: 3}

@@ -68,7 +68,38 @@ Shader "Hidden/MiniEngineAO/Util"
 
         Pass
         {
-            Name "SimpleComposite"
+            Name "CompositeToGBuffer"
+
+            Blend Zero OneMinusSrcColor, Zero OneMinusSrcAlpha
+
+            CGPROGRAM
+
+            #pragma vertex VertProceduralBlit
+            #pragma fragment Frag
+
+            sampler2D _AOTexture;
+
+            struct Output
+            {
+                float4 gbuffer0 : SV_Target0;
+                float4 gbuffer3 : SV_Target1;
+            };
+
+            Output Frag(Varyings input)
+            {
+                float ao = 1 - tex2D(_AOTexture, input.uv).r;
+                Output output;
+                output.gbuffer0 = float4(0, 0, 0, ao);
+                output.gbuffer3 = float4(ao, ao, ao, 0);
+                return output;
+            }
+
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "CompositeToFrameBuffer"
 
             Blend Zero SrcAlpha
 

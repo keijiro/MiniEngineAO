@@ -348,15 +348,31 @@ namespace MiniEngineAO
 
         #region Private methods
 
+        bool ambientOnly
+        {
+            get {
+                return
+                    _camera.allowHDR &&
+                    _camera.actualRenderingPath == RenderingPath.DeferredShading;
+            }
+        }
+
         void RegisterCommandBuffers()
         {
-            _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
-            _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
+            // We use BeforeReflections not AfterGBuffer because we need the
+            // resolved depth that is not yet available at the moment of AfterGBuffer.
+            _camera.AddCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
+
+            if (ambientOnly)
+                _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
+            else
+                _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
         }
 
         void UnregisterCommandBuffers()
         {
-            _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _renderCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
         }
 
@@ -513,6 +529,11 @@ namespace MiniEngineAO
 
         static float [] InvThicknessTable = new float [12];
         static float [] SampleWeightTable = new float [12];
+
+        static RenderTargetIdentifier [] _mrtComposite = {
+            BuiltinRenderTextureType.GBuffer0,    // Albedo, Occ
+            BuiltinRenderTextureType.CameraTarget // Ambient
+        };
 
         #endregion
 
@@ -698,7 +719,16 @@ namespace MiniEngineAO
         void PushCompositeCommands(CommandBuffer cmd)
         {
             cmd.SetGlobalTexture("_AOTexture", _result.id);
-            cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 1, MeshTopology.Triangles, 3);
+
+            if (ambientOnly)
+            {
+                cmd.SetRenderTarget(_mrtComposite, BuiltinRenderTextureType.CameraTarget);
+                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 1, MeshTopology.Triangles, 3);
+            }
+            else
+            {
+                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 2, MeshTopology.Triangles, 3);
+            }
         }
 
         #endregion
