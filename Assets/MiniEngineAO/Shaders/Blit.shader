@@ -1,4 +1,4 @@
-Shader "Hidden/MiniEngineAO/Util"
+Shader "Hidden/MiniEngineAO/Blit"
 {
     Properties
     {

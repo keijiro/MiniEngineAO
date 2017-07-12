@@ -66,7 +66,7 @@ namespace MiniEngineAO
         [SerializeField, HideInInspector] ComputeShader _downsample2Compute;
         [SerializeField, HideInInspector] ComputeShader _renderCompute;
         [SerializeField, HideInInspector] ComputeShader _upsampleCompute;
-        [SerializeField, HideInInspector] Shader _utilShader;
+        [SerializeField, HideInInspector] Shader _blitShader;
 
         #endregion
 
@@ -287,7 +287,7 @@ namespace MiniEngineAO
         CommandBuffer _renderCommand;
         CommandBuffer _compositeCommand;
 
-        Material _utilMaterial;
+        Material _blitMaterial;
 
         #endregion
 
@@ -338,12 +338,12 @@ namespace MiniEngineAO
                 _compositeCommand.Dispose();
             }
 
-            if (_utilMaterial != null)
+            if (_blitMaterial != null)
             {
                 if (Application.isPlaying)
-                    Destroy(_utilMaterial);
+                    Destroy(_blitMaterial);
                 else
-                    DestroyImmediate(_utilMaterial);
+                    DestroyImmediate(_blitMaterial);
             }
         }
 
@@ -431,10 +431,10 @@ namespace MiniEngineAO
             }
 
             // Materials
-            if (_utilMaterial == null)
+            if (_blitMaterial == null)
             {
-                _utilMaterial = new Material(_utilShader);
-                _utilMaterial.hideFlags = HideFlags.DontSave;
+                _blitMaterial = new Material(_blitShader);
+                _blitMaterial.hideFlags = HideFlags.DontSave;
             }
         }
 
@@ -556,7 +556,7 @@ namespace MiniEngineAO
             {
                 _depthCopy.PushAllocationCommand(cmd);
                 cmd.SetRenderTarget(_depthCopy.id);
-                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 0, MeshTopology.Triangles, 3);
+                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 0, MeshTopology.Triangles, 3);
             }
 
             // Temporary buffer allocations.
@@ -751,7 +751,7 @@ namespace MiniEngineAO
             if (rt.isTiled)
             {
                 _renderCommand.SetGlobalTexture("_TileTexture", rt.id);
-                _renderCommand.Blit(null, _result.id, _utilMaterial, 4);
+                _renderCommand.Blit(null, _result.id, _blitMaterial, 4);
             }
             else if (_debug < 17)
             {
@@ -766,16 +766,16 @@ namespace MiniEngineAO
 
             if (_debug > 0)
             {
-                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 3, MeshTopology.Triangles, 3);
+                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 3, MeshTopology.Triangles, 3);
             }
             else if (ambientOnly)
             {
                 cmd.SetRenderTarget(_mrtComposite, BuiltinRenderTextureType.CameraTarget);
-                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 1, MeshTopology.Triangles, 3);
+                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 1, MeshTopology.Triangles, 3);
             }
             else
             {
-                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 2, MeshTopology.Triangles, 3);
+                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 2, MeshTopology.Triangles, 3);
             }
         }
 
