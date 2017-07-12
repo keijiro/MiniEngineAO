@@ -109,5 +109,45 @@ Shader "Hidden/MiniEngineAO/Util"
 
             ENDCG
         }
+
+        Pass
+        {
+            Name "Debug"
+
+            CGPROGRAM
+
+            #pragma vertex Vert
+            #pragma fragment Frag
+
+            sampler2D _AOTexture;
+
+            float4 Frag(Varyings input) : SV_Target
+            {
+                return tex2D(_AOTexture, float2(input.uv.x, 1 - input.uv.y)).r;
+            }
+
+            ENDCG
+        }
+
+        Pass
+        {
+            Name "Detile"
+
+            CGPROGRAM
+
+            #pragma vertex vert_img
+            #pragma fragment Frag
+
+            UNITY_DECLARE_TEX2DARRAY(_TileTexture);
+
+            float4 Frag(v2f_img input) : SV_Target
+            {
+                float2 uv4 = input.uv * 4;
+                float3 uvw = float3(frac(uv4), floor(uv4.x) + floor(uv4.y) * 4);
+                return UNITY_SAMPLE_TEX2DARRAY(_TileTexture, uvw);
+            }
+
+            ENDCG
+        }
     }
 }

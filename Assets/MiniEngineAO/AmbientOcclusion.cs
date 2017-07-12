@@ -56,6 +56,8 @@ namespace MiniEngineAO
             set { _accentuation = value; }
         }
 
+        [SerializeField, Range(0, 17)] int _debug;
+
         #endregion
 
         #region Built-in resources
@@ -190,6 +192,7 @@ namespace MiniEngineAO
                     _rt.format = renderTextureFormat;
                 }
 
+                _rt.filterMode = FilterMode.Point;
                 _rt.enableRandomWrite = hasUAV;
 
                 // Should it be tiled?
@@ -363,7 +366,9 @@ namespace MiniEngineAO
             // resolved depth that is not yet available at the moment of AfterGBuffer.
             _camera.AddCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
 
-            if (ambientOnly)
+            if (_debug > 0)
+                _camera.AddCommandBuffer(CameraEvent.AfterImageEffects, _compositeCommand);
+            else if (ambientOnly)
                 _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
             else
                 _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
@@ -374,6 +379,7 @@ namespace MiniEngineAO
             _camera.RemoveCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.AfterImageEffects, _compositeCommand);
         }
 
         void DoLazyInitialization()
@@ -470,6 +476,8 @@ namespace MiniEngineAO
             PushUpsampleCommands(_renderCommand, _lowDepth3, _combined3, _lowDepth2, _occlusion2, _combined2);
             PushUpsampleCommands(_renderCommand, _lowDepth2, _combined2, _lowDepth1, _occlusion1, _combined1);
             PushUpsampleCommands(_renderCommand, _lowDepth1, _combined1, _linearDepth, null, _result);
+
+            if (_debug > 0) PushDebugBlitCommands(_renderCommand);
 
             // Rebuild the composite commands.
             _compositeCommand.Clear();
@@ -717,11 +725,50 @@ namespace MiniEngineAO
             cmd.DispatchCompute(cs, kernel, xcount, ycount, 1);
         }
 
+        void PushDebugBlitCommands(CommandBuffer cmd)
+        {
+            var rt = _linearDepth; // Show linear depth by default.
+
+            switch (_debug)
+            {
+                case  2: rt = _lowDepth1;   break;
+                case  3: rt = _lowDepth2;   break;
+                case  4: rt = _lowDepth3;   break;
+                case  5: rt = _lowDepth4;   break;
+                case  6: rt = _tiledDepth1; break;
+                case  7: rt = _tiledDepth2; break;
+                case  8: rt = _tiledDepth3; break;
+                case  9: rt = _tiledDepth4; break;
+                case 10: rt = _occlusion1;  break;
+                case 11: rt = _occlusion2;  break;
+                case 12: rt = _occlusion3;  break;
+                case 13: rt = _occlusion4;  break;
+                case 14: rt = _combined1;   break;
+                case 15: rt = _combined2;   break;
+                case 16: rt = _combined3;   break;
+            }
+
+            if (rt.isTiled)
+            {
+                _renderCommand.SetGlobalTexture("_TileTexture", rt.id);
+                _renderCommand.Blit(null, _result.id, _utilMaterial, 4);
+            }
+            else if (_debug < 17)
+            {
+                _renderCommand.Blit(rt.id, _result.id);
+            }
+            // When _debug == 17, do nothing and show _result.
+        }
+
         void PushCompositeCommands(CommandBuffer cmd)
         {
             cmd.SetGlobalTexture("_AOTexture", _result.id);
 
-            if (ambientOnly)
+            if (_debug > 0)
+            {
+                cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 3, MeshTopology.Triangles, 3);
+            }
+            else if (ambientOnly)
             {
                 cmd.SetRenderTarget(_mrtComposite, BuiltinRenderTextureType.CameraTarget);
                 cmd.DrawProcedural(Matrix4x4.identity, _utilMaterial, 1, MeshTopology.Triangles, 3);

@@ -12,6 +12,7 @@ namespace MiniEngineAO
         SerializedProperty _upsampleTolerance;
         SerializedProperty _rejectionFalloff;
         SerializedProperty _accentuation;
+        SerializedProperty _debug;
 
         static internal class Labels
         {
@@ -28,6 +29,7 @@ namespace MiniEngineAO
             _upsampleTolerance = serializedObject.FindProperty("_upsampleTolerance");
             _rejectionFalloff = serializedObject.FindProperty("_rejectionFalloff");
             _accentuation = serializedObject.FindProperty("_accentuation");
+            _debug = serializedObject.FindProperty("_debug");
         }
 
         public override void OnInspectorGUI()
@@ -43,6 +45,7 @@ namespace MiniEngineAO
 
             EditorGUILayout.PropertyField(_rejectionFalloff);
             EditorGUILayout.PropertyField(_accentuation);
+            EditorGUILayout.PropertyField(_debug);
 
             serializedObject.ApplyModifiedProperties();
         }
