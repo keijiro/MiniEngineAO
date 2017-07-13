@@ -11,7 +11,7 @@ namespace MiniEngineAO
         SerializedProperty _blurTolerance;
         SerializedProperty _upsampleTolerance;
         SerializedProperty _rejectionFalloff;
-        SerializedProperty _accentuation;
+        SerializedProperty _strength;
         SerializedProperty _debug;
 
         static internal class Labels
@@ -28,7 +28,7 @@ namespace MiniEngineAO
             _blurTolerance = serializedObject.FindProperty("_blurTolerance");
             _upsampleTolerance = serializedObject.FindProperty("_upsampleTolerance");
             _rejectionFalloff = serializedObject.FindProperty("_rejectionFalloff");
-            _accentuation = serializedObject.FindProperty("_accentuation");
+            _strength = serializedObject.FindProperty("_strength");
             _debug = serializedObject.FindProperty("_debug");
         }
 
@@ -44,7 +44,7 @@ namespace MiniEngineAO
             EditorGUI.indentLevel--;
 
             EditorGUILayout.PropertyField(_rejectionFalloff);
-            EditorGUILayout.PropertyField(_accentuation);
+            EditorGUILayout.PropertyField(_strength);
             EditorGUILayout.PropertyField(_debug);
 
             serializedObject.ApplyModifiedProperties();

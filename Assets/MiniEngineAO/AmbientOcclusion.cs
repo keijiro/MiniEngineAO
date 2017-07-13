@@ -48,12 +48,12 @@ namespace MiniEngineAO
             set { _rejectionFalloff = value; }
         }
 
-        [SerializeField, Range(0, 1)] float _accentuation = 0.1f;
+        [SerializeField, Range(0, 2)] float _strength = 1;
 
         public float accentuation
         {
-            get { return _accentuation; }
-            set { _accentuation = value; }
+            get { return _strength; }
+            set { _strength = value; }
         }
 
         [SerializeField, Range(0, 17)] int _debug;
@@ -76,7 +76,7 @@ namespace MiniEngineAO
         float _blurToleranceOld;
         float _upsampleToleranceOld;
         float _rejectionFalloffOld;
-        float _accentuationOld;
+        float _strengthOld;
 
         bool CheckUpdate(ref float oldValue, float current)
         {
@@ -98,7 +98,7 @@ namespace MiniEngineAO
                 CheckUpdate(ref _blurToleranceOld,        _blurTolerance       ) ||
                 CheckUpdate(ref _upsampleToleranceOld,    _upsampleTolerance   ) ||
                 CheckUpdate(ref _rejectionFalloffOld,     _rejectionFalloff    ) ||
-                CheckUpdate(ref _accentuationOld,         _accentuation        );
+                CheckUpdate(ref _strengthOld,             _strength            );
         }
 
         #endregion
@@ -672,7 +672,7 @@ namespace MiniEngineAO
             cmd.SetComputeFloatParams(cs, "gSampleWeightTable", SampleWeightTable);
             cmd.SetComputeVectorParam(cs, "gInvSliceDimension", source.inverseDimensions);
             cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _rejectionFalloff);
-            cmd.SetComputeFloatParam(cs, "gRcpAccentuation", 1 / (1 + _accentuation));
+            cmd.SetComputeFloatParam(cs, "gStrength", _strength);
             cmd.SetComputeTextureParam(cs, kernel, "DepthTex", source.id);
             cmd.SetComputeTextureParam(cs, kernel, "Occlusion", dest.id);
 
