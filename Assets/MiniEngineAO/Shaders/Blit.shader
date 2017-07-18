@@ -25,7 +25,7 @@ Shader "Hidden/MiniEngineAO/Blit"
     Varyings Vert(uint vid : SV_VertexID)
     {
         float vx = vid == 1 ? 2 : 0;
-        float vy = vid == 2 ? -1 : 1;
+        float vy = vid > 1 ? -1 : 1;
 
         Varyings o;
         o.vertex = float4(vx * 2 - 1, 1 - vy * 2, 0, 1);
