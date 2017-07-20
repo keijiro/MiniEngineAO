@@ -750,12 +750,12 @@ namespace MiniEngineAO
 
             if (rt.isTiled)
             {
-                _renderCommand.SetGlobalTexture("_TileTexture", rt.id);
-                _renderCommand.Blit(null, _result.id, _blitMaterial, 4);
+                cmd.SetGlobalTexture("_TileTexture", rt.id);
+                cmd.Blit(null, _result.id, _blitMaterial, 4);
             }
             else if (_debug < 17)
             {
-                _renderCommand.Blit(rt.id, _result.id);
+                cmd.Blit(rt.id, _result.id);
             }
             // When _debug == 17, do nothing and show _result.
         }
@@ -766,7 +766,7 @@ namespace MiniEngineAO
 
             if (_debug > 0)
             {
-                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 3, MeshTopology.Triangles, 3);
+                cmd.Blit(_result.id, BuiltinRenderTextureType.CameraTarget, _blitMaterial, 3);
             }
             else if (ambientOnly)
             {
