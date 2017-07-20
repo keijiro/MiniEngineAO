@@ -6,5 +6,5 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Test/Sponza.unity
-    guid: a0736f3387939bd40a75c26525467efe
+    path: Assets/Test/Statue.unity
+    guid: c4640f39d8ceacd46af69cc1e8bdb4b4
