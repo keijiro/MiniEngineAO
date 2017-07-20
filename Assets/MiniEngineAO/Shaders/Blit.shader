@@ -29,7 +29,11 @@ Shader "Hidden/MiniEngineAO/Blit"
 
         Varyings o;
         o.vertex = float4(vx * 2 - 1, 1 - vy * 2, 0, 1);
+    #if UNITY_UV_STARTS_AT_TOP
+        o.uv = float2(vx, 1 - vy);
+    #else
         o.uv = float2(vx, vy);
+    #endif
         return o;
     }
 
@@ -123,7 +127,7 @@ Shader "Hidden/MiniEngineAO/Blit"
 
             float4 Frag(Varyings input) : SV_Target
             {
-                return tex2D(_AOTexture, float2(input.uv.x, 1 - input.uv.y)).r;
+                return tex2D(_AOTexture, input.uv).r;
             }
 
             ENDCG
