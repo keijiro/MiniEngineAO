@@ -362,9 +362,14 @@ namespace MiniEngineAO
 
         void RegisterCommandBuffers()
         {
-            // We use BeforeReflections not AfterGBuffer because we need the
-            // resolved depth that is not yet available at the moment of AfterGBuffer.
-            _camera.AddCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
+            // In deferred ambient-only mode, we use BeforeReflections not
+            // AfterGBuffer because we need the resolved depth that is not yet
+            // available at the moment of AfterGBuffer.
+
+            if (ambientOnly)
+                _camera.AddCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
+            else
+                _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _renderCommand);
 
             if (_debug > 0)
                 _camera.AddCommandBuffer(CameraEvent.AfterImageEffects, _compositeCommand);
@@ -377,6 +382,7 @@ namespace MiniEngineAO
         void UnregisterCommandBuffers()
         {
             _camera.RemoveCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
+            _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _renderCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
             _camera.RemoveCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
             _camera.RemoveCommandBuffer(CameraEvent.AfterImageEffects, _compositeCommand);
