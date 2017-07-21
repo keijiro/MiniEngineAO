@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.17573464, g: 0.16682501, b: 0.11215682, a: 1}
+  m_IndirectSpecularColor: {r: 0.17573985, g: 0.16682613, b: 0.112155385, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -120,7 +120,6 @@ GameObject:
   - component: {fileID: 63228466}
   - component: {fileID: 63228465}
   - component: {fileID: 63228464}
-  - component: {fileID: 63228469}
   - component: {fileID: 63228470}
   m_Layer: 0
   m_Name: Main Camera
@@ -199,26 +198,6 @@ Transform:
   m_Father: {fileID: 174097556}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &63228469
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_PrefabParentObject: {fileID: 0}
-  m_PrefabInternal: {fileID: 0}
-  m_GameObject: {fileID: 63228463}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d901ddf32d7c84ed4b0f84623ef3a7a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _intensity: 1.3
-  _radius: 0.3
-  _sampleCount: 2
-  _sampleCountValue: 24
-  _downsampling: 0
-  _occlusionSource: 2
-  _ambientOnly: 1
-  _aoShader: {fileID: 4800000, guid: 7541b5f18b1224a81927d8b1184b122b, type: 3}
-  _quadMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
 --- !u!114 &63228470
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -234,7 +213,7 @@ MonoBehaviour:
   _blurTolerance: -5
   _upsampleTolerance: -7
   _rejectionFalloff: 2.5
-  _accentuation: 0.2
+  _strength: 1
   _debug: 0
   _downsample1Compute: {fileID: 7200000, guid: 659dc93a3764e164e8dafb2061ff317b, type: 3}
   _downsample2Compute: {fileID: 7200000, guid: dc4dd2f3a1157884e95a081b25b5731d, type: 3}
