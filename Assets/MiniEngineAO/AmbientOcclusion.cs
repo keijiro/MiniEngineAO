@@ -16,7 +16,7 @@ namespace MiniEngineAO
         // AO shader. Some of them are not useful nor intuitive enough.
         // TODO: Needs UI/UX rework.
 
-        [SerializeField, Range(-8, 0)] float _noiseFilterTolerance = -3;
+        [SerializeField, Range(-8, 0)] float _noiseFilterTolerance = 0;
 
         public float noiseFilterTolerance
         {
@@ -32,7 +32,7 @@ namespace MiniEngineAO
             set { _blurTolerance = value; }
         }
 
-        [SerializeField, Range(-12, -1)] float _upsampleTolerance = -7;
+        [SerializeField, Range(-12, -1)] float _upsampleTolerance = -12;
 
         public float upsampleTolerance
         {
