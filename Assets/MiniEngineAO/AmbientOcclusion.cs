@@ -781,7 +781,7 @@ namespace MiniEngineAO
             }
             else
             {
-                cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 2, MeshTopology.Triangles, 3);
+                cmd.Blit(null, BuiltinRenderTextureType.CameraTarget, _blitMaterial, 2);
             }
         }
 
