@@ -50,7 +50,7 @@ namespace MiniEngineAO
 
         [SerializeField, Range(0, 2)] float _strength = 1;
 
-        public float accentuation
+        public float strength
         {
             get { return _strength; }
             set { _strength = value; }
@@ -77,10 +77,11 @@ namespace MiniEngineAO
         float _upsampleToleranceOld;
         float _rejectionFalloffOld;
         float _strengthOld;
+        int _debugOld;
 
-        bool CheckUpdate(ref float oldValue, float current)
+        bool CheckUpdate<T>(ref T oldValue, T current) where T : System.IComparable<T>
         {
-            if (oldValue != current)
+            if (oldValue.CompareTo(current) != 0)
             {
                 oldValue = current;
                 return true;
@@ -98,7 +99,8 @@ namespace MiniEngineAO
                 CheckUpdate(ref _blurToleranceOld,        _blurTolerance       ) ||
                 CheckUpdate(ref _upsampleToleranceOld,    _upsampleTolerance   ) ||
                 CheckUpdate(ref _rejectionFalloffOld,     _rejectionFalloff    ) ||
-                CheckUpdate(ref _strengthOld,             _strength            );
+                CheckUpdate(ref _strengthOld,             _strength            ) ||
+                CheckUpdate(ref _debugOld,                _debug               );
         }
 
         #endregion
