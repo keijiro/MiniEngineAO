@@ -24,7 +24,7 @@ namespace MiniEngineAO
             set { _noiseFilterTolerance = value; }
         }
 
-        [SerializeField, Range(-8, -1)] float _blurTolerance = -5;
+        [SerializeField, Range(-8, -1)] float _blurTolerance = -4.6f;
 
         public float blurTolerance
         {

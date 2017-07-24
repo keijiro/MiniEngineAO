@@ -11,21 +11,20 @@ namespace MiniEngineAO
     {
         SerializedProperty _strength;
         SerializedProperty _rejectionFalloff;
-        SerializedProperty _blurTolerance;
 
         #if SHOW_DETAILED_PROPS
         SerializedProperty _noiseFilterTolerance;
+        SerializedProperty _blurTolerance;
         SerializedProperty _upsampleTolerance;
         SerializedProperty _debug;
         #endif
 
         static internal class Labels
         {
-            public static readonly GUIContent filterTolerance = new GUIContent("Filter Tolerance");
-
             #if SHOW_DETAILED_PROPS
             public static readonly GUIContent blur = new GUIContent("Blur");
             public static readonly GUIContent denoise = new GUIContent("Denoise");
+            public static readonly GUIContent filterTolerance = new GUIContent("Filter Tolerance");
             public static readonly GUIContent upsample = new GUIContent("Upsample");
             #endif
         }
@@ -34,10 +33,10 @@ namespace MiniEngineAO
         {
             _strength = serializedObject.FindProperty("_strength");
             _rejectionFalloff = serializedObject.FindProperty("_rejectionFalloff");
-            _blurTolerance = serializedObject.FindProperty("_blurTolerance");
 
             #if SHOW_DETAILED_PROPS
             _noiseFilterTolerance = serializedObject.FindProperty("_noiseFilterTolerance");
+            _blurTolerance = serializedObject.FindProperty("_blurTolerance");
             _upsampleTolerance = serializedObject.FindProperty("_upsampleTolerance");
             _debug = serializedObject.FindProperty("_debug");
             #endif
@@ -58,8 +57,6 @@ namespace MiniEngineAO
             EditorGUILayout.PropertyField(_upsampleTolerance, Labels.upsample);
             EditorGUI.indentLevel--;
             EditorGUILayout.PropertyField(_debug);
-        #else
-            EditorGUILayout.PropertyField(_blurTolerance, Labels.filterTolerance);
         #endif
 
             serializedObject.ApplyModifiedProperties();
