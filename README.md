@@ -30,6 +30,12 @@ Although Metal (macOS/iOS) is thought to fulfill the requirements, it doesn't
 work due to a texture array issue ([case 926975]). This issue has been already
 fixed in the development branch, so it'll be resolved in a near future release.
 
+Installation
+------------
+
+Download one of the unitypackage files from the [Releases] page and import it
+to a project.
+
 License
 -------
 
@@ -41,3 +47,4 @@ License
 [Compute shader]: https://docs.unity3d.com/Manual/ComputeShaders.html
 [texture array]: https://docs.unity3d.com/ScriptReference/SystemInfo-supports2DArrayTextures.html
 [case 926975]: https://issuetracker.unity3d.com/issues/metal-unable-to-access-texture2darray-from-compute-shader
+[Releases]: https://github.com/keijiro/MiniEngineAO/releases
