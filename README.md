@@ -1,26 +1,43 @@
 MiniEngineAO
 ------------
 
-![screenshot](http://i.imgur.com/2nQRQvcl.png)
+![screenshot](http://i.imgur.com/Ao7175jm.png)
+![screenshot](http://i.imgur.com/k71J9Qym.png)
 
-**MiniEngineAO** is a SSAO shader for Unity that was originally developed by
-Team Minigraph at Microsoft for their [MiniEngine] library.
+![gif](http://i.imgur.com/dP1egST.gif)
+
+**MiniEngineAO** is a SSAO image effect for Unity that was originally developed
+by Team Minigraph at Microsoft for their [MiniEngine] library.
+
+MiniEngineAO has several advantages compared to other SSAO implementations --
+smooth results, good temporal characteristics, optimized for GPU compute. The
+most significant advantage may be speed. It's heavily optimized with the
+compute shader features, especially with the local memory (TGSM/LDS) use, so
+that it manages to avoid major bottlenecks that can be found in traditional
+SSAO implementations.
+
+The original design of MiniEngineAO can be explained as a combination of two
+known SSAO methods: [Volumetric Obscurance] and [Multi-Scale Ambient Occlusion].
+It's well-tailored to have the advantages of both these methods.
+
+System Requirements
+-------------------
+
+- Unity 2017.1.0 or later.
+- [Compute shader] and [texture array] support.
+
+Although Metal (macOS/iOS) is thought to fulfill the requirements, it doesn't
+work due to a texture array issue ([case 926975]). This issue has been already
+fixed in the development branch, so it'll be resolved in a near future release.
+
+License
+-------
+
+[MIT](LICENSE)
 
 [MiniEngine]: https://github.com/Microsoft/DirectX-Graphics-Samples
-
-The MiniEngine SSAO shader has some great points compared to other SSAO
-implementations:
-
-- Well optimized for GPU compute. It uses some neat tricks of texture sampling
-  and utilizes thread group shared memory to eliminate major bottlenecks in the
-  shader so that it keeps throughput high.
-- Horizon based method. It provides smoother results compared to other
-  Monte Carlo-ish methods.
-- Hierarchical approach of denoising and sample distribution. It can
-  efficiently eliminate noise and artifacts.
-
-One of the major disadvantages of this method is that it requires GPU compute.
-It can't support old graphic APIs (like OpenGL on macOS), and probably runs
-slower on mobile GPUs due to limitations in compute units.
-
-This port is still under development and not ready to use in production.
+[Volumetric Obscurance]: http://www.cs.utah.edu/~loos/publications/vo/vo.pdf
+[Multi-Scale Ambient Occlusion]: https://www.comp.nus.edu.sg/~lowkl/publications/mssao_visual_computer_2012.pdf
+[Compute shader]: https://docs.unity3d.com/Manual/ComputeShaders.html
+[texture array]: https://docs.unity3d.com/ScriptReference/SystemInfo-supports2DArrayTextures.html
+[case 926975]: https://issuetracker.unity3d.com/issues/metal-unable-to-access-texture2darray-from-compute-shader
