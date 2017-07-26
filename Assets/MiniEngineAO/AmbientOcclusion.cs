@@ -266,6 +266,7 @@ namespace MiniEngineAO
         #region Internal objects
 
         Camera _camera;
+        int _drawCountPerFrame;
 
         RTHandle _depthCopy;
         RTHandle _linearDepth;
@@ -314,13 +315,23 @@ namespace MiniEngineAO
 
             // Check if the screen size was changed from the previous frame.
             // We have to rebuild the command buffer if it's changed.
-            rebuild |= !RTHandle.CheckBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+            rebuild |= !RTHandle.CheckBaseDimensions(
+                _camera.pixelWidth * (singlePassStereoEnabled ? 2 : 1),
+                _camera.pixelHeight
+            );
 
             // In edit mode, it's difficult to check all the elements that
             // affect the AO, so we update the command buffer every time.
             rebuild |= !Application.isPlaying;
 
             if (rebuild) RebuildCommandBuffers();
+
+            _drawCountPerFrame = 0;
+        }
+
+        void OnPreRender()
+        {
+            _drawCountPerFrame++;
         }
 
         void OnDestroy()
@@ -352,6 +363,21 @@ namespace MiniEngineAO
         #endregion
 
         #region Private methods
+
+        // There is no standard method to check if single-pass stereo rendering
+        // is enabled or not, so we use a little bit hackish way to detect it.
+        // Although it fails at the first frame, it's not noticeable in most
+        // cases. FIXME: We need a proper way to do this.
+        bool singlePassStereoEnabled
+        {
+            get {
+                return
+                    _camera != null &&
+                    _camera.stereoEnabled &&
+                    _camera.targetTexture == null &&
+                    _drawCountPerFrame == 1;
+            }
+        }
 
         bool ambientOnly
         {
@@ -451,7 +477,10 @@ namespace MiniEngineAO
             UnregisterCommandBuffers();
 
             // Update the base dimensions and reallocate static RTs.
-            RTHandle.SetBaseDimensions(_camera.pixelWidth, _camera.pixelHeight);
+            RTHandle.SetBaseDimensions(
+                _camera.pixelWidth * (singlePassStereoEnabled ? 2 : 1),
+                _camera.pixelHeight
+            );
 
             _tiledDepth1.AllocateNow();
             _tiledDepth2.AllocateNow();

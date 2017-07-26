@@ -25,6 +25,17 @@ Shader "Hidden/MiniEngineAO/Blit"
     #else
         o.uv = float2(x, 1 - y);
     #endif
+        o.uv = TransformStereoScreenSpaceTex(o.uv, 1);
+        return o;
+    }
+
+    // The standard vertex shader for blit, slightly modified for supporting
+    // single-pass stereo rendering.
+    v2f_img vert_img2(appdata_img v)
+    {
+        v2f_img o;
+        o.pos = UnityObjectToClipPos(v.vertex);
+        o.uv = TransformStereoScreenSpaceTex(v.texcoord, 1);
         return o;
     }
 
@@ -89,7 +100,7 @@ Shader "Hidden/MiniEngineAO/Blit"
 
             CGPROGRAM
 
-            #pragma vertex vert_img
+            #pragma vertex vert_img2
             #pragma fragment frag
 
             sampler2D _AOTexture;
@@ -109,7 +120,7 @@ Shader "Hidden/MiniEngineAO/Blit"
 
             CGPROGRAM
 
-            #pragma vertex vert_img
+            #pragma vertex vert_img2
             #pragma fragment frag
 
             sampler2D _AOTexture;
@@ -129,7 +140,7 @@ Shader "Hidden/MiniEngineAO/Blit"
 
             CGPROGRAM
 
-            #pragma vertex vert_img
+            #pragma vertex vert_img2
             #pragma fragment frag
 
             UNITY_DECLARE_TEX2DARRAY(_TileTexture);
