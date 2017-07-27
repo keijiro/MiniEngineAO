@@ -13,8 +13,9 @@ namespace MiniEngineAO
         #region Exposed properties
 
         // These properties are simply exposed from the original MiniEngine
-        // AO shader. Some of them are not useful nor intuitive enough.
-        // TODO: Needs UI/UX rework.
+        // AO effect. Most of them are hidden in our inspector because they
+        // are not useful nor user-friencly. If you want to try them out,
+        // uncomment the first line of AmbientOcclusionEditor.cs.
 
         [SerializeField, Range(-8, 0)] float _noiseFilterTolerance = 0;
 
@@ -266,7 +267,7 @@ namespace MiniEngineAO
         #region Internal objects
 
         Camera _camera;
-        int _drawCountPerFrame;
+        int _drawCountPerFrame; // used to detect single-pass stereo
 
         RTHandle _depthCopy;
         RTHandle _linearDepth;
@@ -314,14 +315,14 @@ namespace MiniEngineAO
             var rebuild = CheckPropertiesChanged();
 
             // Check if the screen size was changed from the previous frame.
-            // We have to rebuild the command buffer if it's changed.
+            // We must rebuild the command buffers when it's changed.
             rebuild |= !RTHandle.CheckBaseDimensions(
                 _camera.pixelWidth * (singlePassStereoEnabled ? 2 : 1),
                 _camera.pixelHeight
             );
 
-            // In edit mode, it's difficult to check all the elements that
-            // affect the AO, so we update the command buffer every time.
+            // In edit mode, it's almost impossible to check up all the factors
+            // that can affect AO, so we update them every frame.
             rebuild |= !Application.isPlaying;
 
             if (rebuild) RebuildCommandBuffers();
@@ -366,8 +367,9 @@ namespace MiniEngineAO
 
         // There is no standard method to check if single-pass stereo rendering
         // is enabled or not, so we use a little bit hackish way to detect it.
-        // Although it fails at the first frame, it's not noticeable in most
-        // cases. FIXME: We need a proper way to do this.
+        // Although it fails at the first frame and causes a single-frame
+        // glitch, that might be unnoticeable in most cases.
+        // FIXME: We need a proper way to do this.
         bool singlePassStereoEnabled
         {
             get {

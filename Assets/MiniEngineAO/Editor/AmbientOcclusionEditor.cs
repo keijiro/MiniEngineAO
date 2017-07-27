@@ -49,7 +49,7 @@ namespace MiniEngineAO
             EditorGUILayout.PropertyField(_strength);
             EditorGUILayout.PropertyField(_rejectionFalloff);
 
-        #if SHOW_DETAILED_PROPS
+            #if SHOW_DETAILED_PROPS
             EditorGUILayout.LabelField(Labels.filterTolerance);
             EditorGUI.indentLevel++;
             EditorGUILayout.PropertyField(_noiseFilterTolerance, Labels.denoise);
@@ -57,7 +57,7 @@ namespace MiniEngineAO
             EditorGUILayout.PropertyField(_upsampleTolerance, Labels.upsample);
             EditorGUI.indentLevel--;
             EditorGUILayout.PropertyField(_debug);
-        #endif
+            #endif
 
             serializedObject.ApplyModifiedProperties();
         }
