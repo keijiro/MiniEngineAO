@@ -658,6 +658,7 @@ namespace MiniEngineAO
             // Note about the "2.0f * ":  Diameter = 2 * Radius
             var ThicknessMultiplier = 2 * TanHalfFovH * ScreenspaceDiameter / source.width;
             if (!source.isTiled) ThicknessMultiplier *= 2;
+            if (singlePassStereoEnabled) ThicknessMultiplier *= 2;
 
             // This will transform a depth value from [0, thickness] to [0, 1].
             var InverseRangeFactor = 1 / ThicknessMultiplier;
