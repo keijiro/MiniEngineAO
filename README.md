@@ -39,7 +39,8 @@ to a project.
 License
 -------
 
-[MIT](LICENSE)
+MiniEngineAO inherits the original license of the MiniEngine library. See
+[LICENSE] for further details.
 
 [MiniEngine]: https://github.com/Microsoft/DirectX-Graphics-Samples
 [Volumetric Obscurance]: http://www.cs.utah.edu/~loos/publications/vo/vo.pdf
@@ -48,3 +49,4 @@ License
 [texture array]: https://docs.unity3d.com/ScriptReference/SystemInfo-supports2DArrayTextures.html
 [case 926975]: https://issuetracker.unity3d.com/issues/metal-unable-to-access-texture2darray-from-compute-shader
 [Releases]: https://github.com/keijiro/MiniEngineAO/releases
+[LICENSE]: https://github.com/keijiro/MiniEngineAO/blob/master/LICENSE
