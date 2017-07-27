@@ -16,8 +16,9 @@ namespace MiniEngineAO
         SerializedProperty _noiseFilterTolerance;
         SerializedProperty _blurTolerance;
         SerializedProperty _upsampleTolerance;
-        SerializedProperty _debug;
         #endif
+
+        SerializedProperty _debug;
 
         static internal class Labels
         {
@@ -38,8 +39,9 @@ namespace MiniEngineAO
             _noiseFilterTolerance = serializedObject.FindProperty("_noiseFilterTolerance");
             _blurTolerance = serializedObject.FindProperty("_blurTolerance");
             _upsampleTolerance = serializedObject.FindProperty("_upsampleTolerance");
-            _debug = serializedObject.FindProperty("_debug");
             #endif
+
+            _debug = serializedObject.FindProperty("_debug");
         }
 
         public override void OnInspectorGUI()
@@ -56,7 +58,17 @@ namespace MiniEngineAO
             EditorGUILayout.PropertyField(_blurTolerance, Labels.blur);
             EditorGUILayout.PropertyField(_upsampleTolerance, Labels.upsample);
             EditorGUI.indentLevel--;
+            #endif
+
+            #if SHOW_DETAILED_PROPS
             EditorGUILayout.PropertyField(_debug);
+            #else
+            EditorGUI.BeginChangeCheck();
+            EditorGUI.showMixedValue = _debug.hasMultipleDifferentValues;
+            var debug = EditorGUILayout.Toggle("Debug", _debug.intValue > 0);
+            EditorGUI.showMixedValue = false;
+            if (EditorGUI.EndChangeCheck())
+                _debug.intValue = debug ? 17 : 0; // 17 == AO result buffer
             #endif
 
             serializedObject.ApplyModifiedProperties();
