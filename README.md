@@ -4,6 +4,9 @@ MiniEngineAO
 ![screenshot](http://i.imgur.com/Ao7175jm.png)
 ![screenshot](http://i.imgur.com/k71J9Qym.png)
 
+![screenshot](http://i.imgur.com/guZd8Udm.png)
+![screenshot](http://i.imgur.com/Ixuu5Cnm.png)
+
 ![gif](http://i.imgur.com/dP1egST.gif)
 
 **MiniEngineAO** is a SSAO image effect for Unity that was originally developed
