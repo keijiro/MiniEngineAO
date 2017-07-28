@@ -40,7 +40,7 @@ CBUFFER_START(CB1)
     float4 gSampleWeightTable[3];
     float4 gInvSliceDimension;
     float  gRejectFadeoff;
-    float  gStrength;
+    float  gIntensity;
 CBUFFER_END
 
 #if WIDE_SAMPLING
@@ -173,5 +173,5 @@ void MAIN( uint3 Gid : SV_GroupID, uint GI : SV_GroupIndex, uint3 GTid : SV_Grou
 #else
     uint2 OutPixel = DTid.xy;
 #endif
-    Occlusion[OutPixel] = lerp(1, ao, gStrength);
+    Occlusion[OutPixel] = lerp(1, ao, gIntensity);
 }

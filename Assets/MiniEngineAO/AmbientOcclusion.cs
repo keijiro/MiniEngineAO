@@ -41,20 +41,20 @@ namespace MiniEngineAO
             set { _upsampleTolerance = value; }
         }
 
-        [SerializeField, Range(1, 10)] float _rejectionFalloff = 2.5f;
+        [SerializeField, Range(1, 10)] float _thickness = 1;
 
-        public float rejectionFalloff
+        public float thickness
         {
-            get { return _rejectionFalloff; }
-            set { _rejectionFalloff = value; }
+            get { return _thickness; }
+            set { _thickness = value; }
         }
 
-        [SerializeField, Range(0, 2)] float _strength = 1;
+        [SerializeField, Range(0, 2)] float _intensity = 1;
 
-        public float strength
+        public float intensity
         {
-            get { return _strength; }
-            set { _strength = value; }
+            get { return _intensity; }
+            set { _intensity = value; }
         }
 
         [SerializeField, Range(0, 17)] int _debug;
@@ -76,8 +76,8 @@ namespace MiniEngineAO
         float _noiseFilterToleranceOld;
         float _blurToleranceOld;
         float _upsampleToleranceOld;
-        float _rejectionFalloffOld;
-        float _strengthOld;
+        float _thicknessOld;
+        float _intensityOld;
         int _debugOld;
 
         bool CheckUpdate<T>(ref T oldValue, T current) where T : System.IComparable<T>
@@ -99,8 +99,8 @@ namespace MiniEngineAO
                 CheckUpdate(ref _noiseFilterToleranceOld, _noiseFilterTolerance) ||
                 CheckUpdate(ref _blurToleranceOld,        _blurTolerance       ) ||
                 CheckUpdate(ref _upsampleToleranceOld,    _upsampleTolerance   ) ||
-                CheckUpdate(ref _rejectionFalloffOld,     _rejectionFalloff    ) ||
-                CheckUpdate(ref _strengthOld,             _strength            ) ||
+                CheckUpdate(ref _thicknessOld,            _thickness           ) ||
+                CheckUpdate(ref _intensityOld,            _intensity           ) ||
                 CheckUpdate(ref _debugOld,                _debug               );
         }
 
@@ -711,8 +711,8 @@ namespace MiniEngineAO
             cmd.SetComputeFloatParams(cs, "gInvThicknessTable", InvThicknessTable);
             cmd.SetComputeFloatParams(cs, "gSampleWeightTable", SampleWeightTable);
             cmd.SetComputeVectorParam(cs, "gInvSliceDimension", source.inverseDimensions);
-            cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _rejectionFalloff);
-            cmd.SetComputeFloatParam(cs, "gStrength", _strength);
+            cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _thickness);
+            cmd.SetComputeFloatParam(cs, "gIntensity", _intensity);
             cmd.SetComputeTextureParam(cs, kernel, "DepthTex", source.id);
             cmd.SetComputeTextureParam(cs, kernel, "Occlusion", dest.id);
 

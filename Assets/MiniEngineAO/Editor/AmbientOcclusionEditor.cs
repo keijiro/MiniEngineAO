@@ -9,8 +9,8 @@ namespace MiniEngineAO
     [CustomEditor(typeof(AmbientOcclusion))]
     public class AmbientOcclusionEditor : Editor
     {
-        SerializedProperty _strength;
-        SerializedProperty _rejectionFalloff;
+        SerializedProperty _intensity;
+        SerializedProperty _thickness;
 
         #if SHOW_DETAILED_PROPS
         SerializedProperty _noiseFilterTolerance;
@@ -22,6 +22,19 @@ namespace MiniEngineAO
 
         static internal class Labels
         {
+            public static readonly GUIContent intensity = new GUIContent(
+                "Intensity", "The degree of darkness added by ambient occlusion."
+            );
+
+            public static readonly GUIContent thickness = new GUIContent(
+                "Thickness", "The value modifies thickness of occluders. " +
+                "This increases dark areas but also introduces dark halo around objects."
+            );
+
+            public static readonly GUIContent debug = new GUIContent(
+                "Debug", "Visualizes ambient occlusion to assist debugging."
+            );
+
             #if SHOW_DETAILED_PROPS
             public static readonly GUIContent blur = new GUIContent("Blur");
             public static readonly GUIContent denoise = new GUIContent("Denoise");
@@ -32,8 +45,8 @@ namespace MiniEngineAO
 
         void OnEnable()
         {
-            _strength = serializedObject.FindProperty("_strength");
-            _rejectionFalloff = serializedObject.FindProperty("_rejectionFalloff");
+            _intensity = serializedObject.FindProperty("_intensity");
+            _thickness = serializedObject.FindProperty("_thickness");
 
             #if SHOW_DETAILED_PROPS
             _noiseFilterTolerance = serializedObject.FindProperty("_noiseFilterTolerance");
@@ -48,8 +61,8 @@ namespace MiniEngineAO
         {
             serializedObject.Update();
 
-            EditorGUILayout.PropertyField(_strength);
-            EditorGUILayout.PropertyField(_rejectionFalloff);
+            EditorGUILayout.PropertyField(_intensity, Labels.intensity);
+            EditorGUILayout.PropertyField(_thickness, Labels.thickness);
 
             #if SHOW_DETAILED_PROPS
             EditorGUILayout.LabelField(Labels.filterTolerance);
@@ -61,11 +74,11 @@ namespace MiniEngineAO
             #endif
 
             #if SHOW_DETAILED_PROPS
-            EditorGUILayout.PropertyField(_debug);
+            EditorGUILayout.PropertyField(_debug, Labels.debug);
             #else
             EditorGUI.BeginChangeCheck();
             EditorGUI.showMixedValue = _debug.hasMultipleDifferentValues;
-            var debug = EditorGUILayout.Toggle("Debug", _debug.intValue > 0);
+            var debug = EditorGUILayout.Toggle(Labels.debug, _debug.intValue > 0);
             EditorGUI.showMixedValue = false;
             if (EditorGUI.EndChangeCheck())
                 _debug.intValue = debug ? 17 : 0; // 17 == AO result buffer
