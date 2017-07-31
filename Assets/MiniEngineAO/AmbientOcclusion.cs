@@ -41,12 +41,12 @@ namespace MiniEngineAO
             set { _upsampleTolerance = value; }
         }
 
-        [SerializeField, Range(1, 10)] float _thickness = 1;
+        [SerializeField, Range(1, 10)] float _thicknessModifier = 1;
 
-        public float thickness
+        public float thicknessModifier
         {
-            get { return _thickness; }
-            set { _thickness = value; }
+            get { return _thicknessModifier; }
+            set { _thicknessModifier = value; }
         }
 
         [SerializeField, Range(0, 2)] float _intensity = 1;
@@ -76,7 +76,7 @@ namespace MiniEngineAO
         float _noiseFilterToleranceOld;
         float _blurToleranceOld;
         float _upsampleToleranceOld;
-        float _thicknessOld;
+        float _thicknessModifierOld;
         float _intensityOld;
         int _debugOld;
 
@@ -99,7 +99,7 @@ namespace MiniEngineAO
                 CheckUpdate(ref _noiseFilterToleranceOld, _noiseFilterTolerance) ||
                 CheckUpdate(ref _blurToleranceOld,        _blurTolerance       ) ||
                 CheckUpdate(ref _upsampleToleranceOld,    _upsampleTolerance   ) ||
-                CheckUpdate(ref _thicknessOld,            _thickness           ) ||
+                CheckUpdate(ref _thicknessModifierOld,    _thicknessModifier   ) ||
                 CheckUpdate(ref _intensityOld,            _intensity           ) ||
                 CheckUpdate(ref _debugOld,                _debug               );
         }
@@ -711,7 +711,7 @@ namespace MiniEngineAO
             cmd.SetComputeFloatParams(cs, "gInvThicknessTable", InvThicknessTable);
             cmd.SetComputeFloatParams(cs, "gSampleWeightTable", SampleWeightTable);
             cmd.SetComputeVectorParam(cs, "gInvSliceDimension", source.inverseDimensions);
-            cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _thickness);
+            cmd.SetComputeFloatParam(cs, "gRejectFadeoff", -1 / _thicknessModifier);
             cmd.SetComputeFloatParam(cs, "gIntensity", _intensity);
             cmd.SetComputeTextureParam(cs, kernel, "DepthTex", source.id);
             cmd.SetComputeTextureParam(cs, kernel, "Occlusion", dest.id);

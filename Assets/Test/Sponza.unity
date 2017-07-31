@@ -965,7 +965,7 @@ MonoBehaviour:
   _noiseFilterTolerance: 0
   _blurTolerance: -4.6
   _upsampleTolerance: -12
-  _thickness: 2
+  _thicknessModifier: 1
   _intensity: 1.1
   _debug: 0
   _downsample1Compute: {fileID: 7200000, guid: 659dc93a3764e164e8dafb2061ff317b, type: 3}

@@ -10,7 +10,7 @@ namespace MiniEngineAO
     public class AmbientOcclusionEditor : Editor
     {
         SerializedProperty _intensity;
-        SerializedProperty _thickness;
+        SerializedProperty _thicknessModifier;
 
         #if SHOW_DETAILED_PROPS
         SerializedProperty _noiseFilterTolerance;
@@ -26,8 +26,8 @@ namespace MiniEngineAO
                 "Intensity", "The degree of darkness added by ambient occlusion."
             );
 
-            public static readonly GUIContent thickness = new GUIContent(
-                "Thickness", "The value modifies thickness of occluders. " +
+            public static readonly GUIContent thicknessModifier = new GUIContent(
+                "Thickness Modifier", "The value modifies thickness of occluders. " +
                 "This increases dark areas but also introduces dark halo around objects."
             );
 
@@ -46,7 +46,7 @@ namespace MiniEngineAO
         void OnEnable()
         {
             _intensity = serializedObject.FindProperty("_intensity");
-            _thickness = serializedObject.FindProperty("_thickness");
+            _thicknessModifier = serializedObject.FindProperty("_thicknessModifier");
 
             #if SHOW_DETAILED_PROPS
             _noiseFilterTolerance = serializedObject.FindProperty("_noiseFilterTolerance");
@@ -62,7 +62,7 @@ namespace MiniEngineAO
             serializedObject.Update();
 
             EditorGUILayout.PropertyField(_intensity, Labels.intensity);
-            EditorGUILayout.PropertyField(_thickness, Labels.thickness);
+            EditorGUILayout.PropertyField(_thicknessModifier, Labels.thicknessModifier);
 
             #if SHOW_DETAILED_PROPS
             EditorGUILayout.LabelField(Labels.filterTolerance);
