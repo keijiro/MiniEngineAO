@@ -11,6 +11,7 @@ namespace MiniEngineAO
     {
         SerializedProperty _intensity;
         SerializedProperty _thicknessModifier;
+        SerializedProperty _ambientOnly;
 
         #if SHOW_DETAILED_PROPS
         SerializedProperty _noiseFilterTolerance;
@@ -23,12 +24,17 @@ namespace MiniEngineAO
         static internal class Labels
         {
             public static readonly GUIContent intensity = new GUIContent(
-                "Intensity", "The degree of darkness added by ambient occlusion."
+                "Intensity", "Degree of darkness added by ambient occlusion."
             );
 
             public static readonly GUIContent thicknessModifier = new GUIContent(
-                "Thickness Modifier", "The value modifies thickness of occluders. " +
+                "Thickness Modifier", "Modifies thickness of occluders. " +
                 "This increases dark areas but also introduces dark halo around objects."
+            );
+
+            public static readonly GUIContent ambientOnly = new GUIContent(
+                "Ambient Only", "Enables ambient-only mode in that the effect only affects ambient lighting. " +
+                "This mode is only available with the Deferred rendering path and HDR rendering."
             );
 
             public static readonly GUIContent debug = new GUIContent(
@@ -43,10 +49,17 @@ namespace MiniEngineAO
             #endif
         }
 
+        static bool CheckAmbientOnlyAvailable(AmbientOcclusion ao)
+        {
+            var camera = ao.GetComponent<Camera>();
+            return camera.allowHDR && camera.actualRenderingPath == RenderingPath.DeferredShading;
+        }
+
         void OnEnable()
         {
             _intensity = serializedObject.FindProperty("_intensity");
             _thicknessModifier = serializedObject.FindProperty("_thicknessModifier");
+            _ambientOnly = serializedObject.FindProperty("_ambientOnly");
 
             #if SHOW_DETAILED_PROPS
             _noiseFilterTolerance = serializedObject.FindProperty("_noiseFilterTolerance");
@@ -63,6 +76,13 @@ namespace MiniEngineAO
 
             EditorGUILayout.PropertyField(_intensity, Labels.intensity);
             EditorGUILayout.PropertyField(_thicknessModifier, Labels.thicknessModifier);
+
+            EditorGUI.BeginDisabledGroup(
+                _ambientOnly.hasMultipleDifferentValues ||
+                !CheckAmbientOnlyAvailable((AmbientOcclusion)target)
+            );
+            EditorGUILayout.PropertyField(_ambientOnly, Labels.ambientOnly);
+            EditorGUI.EndDisabledGroup();
 
             #if SHOW_DETAILED_PROPS
             EditorGUILayout.LabelField(Labels.filterTolerance);

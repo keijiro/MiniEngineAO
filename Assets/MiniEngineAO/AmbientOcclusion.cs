@@ -59,6 +59,14 @@ namespace MiniEngineAO
 
         [SerializeField, Range(0, 17)] int _debug;
 
+        public bool ambientOnly
+        {
+            get { return _ambientOnly; }
+            set { _ambientOnly = value; }
+        }
+
+        [SerializeField] bool _ambientOnly = true;
+
         #endregion
 
         #region Built-in resources
@@ -381,11 +389,11 @@ namespace MiniEngineAO
             }
         }
 
-        bool ambientOnly
+        bool ambientOnlyEnabled
         {
             get {
                 return
-                    _camera.allowHDR &&
+                    _ambientOnly && _camera.allowHDR &&
                     _camera.actualRenderingPath == RenderingPath.DeferredShading;
             }
         }
@@ -396,14 +404,14 @@ namespace MiniEngineAO
             // AfterGBuffer because we need the resolved depth that is not yet
             // available at the moment of AfterGBuffer.
 
-            if (ambientOnly)
+            if (ambientOnlyEnabled)
                 _camera.AddCommandBuffer(CameraEvent.BeforeReflections, _renderCommand);
             else
                 _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _renderCommand);
 
             if (_debug > 0)
                 _camera.AddCommandBuffer(CameraEvent.AfterImageEffects, _compositeCommand);
-            else if (ambientOnly)
+            else if (ambientOnlyEnabled)
                 _camera.AddCommandBuffer(CameraEvent.BeforeLighting, _compositeCommand);
             else
                 _camera.AddCommandBuffer(CameraEvent.BeforeImageEffects, _compositeCommand);
@@ -808,7 +816,7 @@ namespace MiniEngineAO
             {
                 cmd.Blit(_result.id, BuiltinRenderTextureType.CameraTarget, _blitMaterial, 3);
             }
-            else if (ambientOnly)
+            else if (ambientOnlyEnabled)
             {
                 cmd.SetRenderTarget(_mrtComposite, BuiltinRenderTextureType.CameraTarget);
                 cmd.DrawProcedural(Matrix4x4.identity, _blitMaterial, 1, MeshTopology.Triangles, 3);
