@@ -38,6 +38,11 @@ float Linearize( uint2 st )
 {
     float depth = Depth[st];
     float dist = 1.0 / (ZBufferParams.x * depth + ZBufferParams.y);
+#ifdef UNITY_REVERSED_Z
+    if (depth == 0) dist = 1e5;
+#else
+    if (depth == 1) dist = 1e5;
+#endif
     LinearZ[st] = dist;
     return dist;
 }
