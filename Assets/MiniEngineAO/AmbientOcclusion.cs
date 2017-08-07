@@ -221,11 +221,22 @@ namespace MiniEngineAO
             {
                 CalculateDimensions();
 
-                cmd.GetTemporaryRT(
-                    _id, _width, _height, 0,
-                    FilterMode.Point, renderTextureFormat,
-                    RenderTextureReadWrite.Linear, 1, hasUAV
-                );
+                if (isTiled)
+                {
+                    cmd.GetTemporaryRTArray(
+                        _id, _width, _height, depth, 0,
+                        FilterMode.Point, renderTextureFormat,
+                        RenderTextureReadWrite.Linear, 1, hasUAV
+                    );
+                }
+                 else
+                {
+                    cmd.GetTemporaryRT(
+                        _id, _width, _height, 0,
+                        FilterMode.Point, renderTextureFormat,
+                        RenderTextureReadWrite.Linear, 1, hasUAV
+                    );
+                }
             }
 
             // Destroy internal objects.
@@ -492,11 +503,6 @@ namespace MiniEngineAO
                 _camera.pixelHeight
             );
 
-            _tiledDepth1.AllocateNow();
-            _tiledDepth2.AllocateNow();
-            _tiledDepth3.AllocateNow();
-            _tiledDepth4.AllocateNow();
-
             _result.AllocateNow();
 
             // Rebuild the render commands.
@@ -612,6 +618,10 @@ namespace MiniEngineAO
             _lowDepth2.PushAllocationCommand(cmd);
             _lowDepth3.PushAllocationCommand(cmd);
             _lowDepth4.PushAllocationCommand(cmd);
+            _tiledDepth1.PushAllocationCommand(cmd);
+            _tiledDepth2.PushAllocationCommand(cmd);
+            _tiledDepth3.PushAllocationCommand(cmd);
+            _tiledDepth4.PushAllocationCommand(cmd);
 
             // 1st downsampling pass.
             var cs = _downsample1Compute;
