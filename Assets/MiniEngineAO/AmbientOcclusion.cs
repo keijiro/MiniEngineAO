@@ -551,7 +551,8 @@ namespace MiniEngineAO
             var gtype = SystemInfo.graphicsDeviceType;
             return rpath == RenderingPath.DeferredShading &&
                   (gtype == GraphicsDeviceType.Direct3D11 ||
-                   gtype == GraphicsDeviceType.Direct3D12);
+                   gtype == GraphicsDeviceType.Direct3D12 ||
+                   gtype == GraphicsDeviceType.XboxOne);
         }
 
         // Calculate values in _ZBuferParams (built-in shader variable)
